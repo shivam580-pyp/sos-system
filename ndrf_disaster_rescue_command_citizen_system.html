@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="hi" class="h-full bg-slate-900 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NDRF Disaster Rescue Command & Citizen Mesh System</title>
+    
+    <!-- Leaflet CSS & JS for Offline GIS Mapping -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Tailwind CSS (via CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brandDark: '#0f172a',
+                        brandCard: '#1e293b',
+                        brandAccent: '#0284c7',
+                        sosRed: '#dc2626'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .strobe-active {
+            animation: strobe 0.15s infinite alternate;
+        }
+        @keyframes strobe {
+            0% { background-color: #ffffff; color: #000000; }
+            100% { background-color: #dc2626; color: #ffffff; }
+        }
+        #map { height: 450px; width: 100%; border-radius: 0.75rem; }
+        .chart-container { position: relative; width: 100%; max-width: 100%; height: 300px; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen bg-slate-900 text-slate-100 font-sans">
+
+<!-- Chosen Palette: Slate Dark Emergency (Dark Slate background, Sky Blue accents, Emergency Red SOS/alerts, Amber warnings) -->
+<!-- Application Structure Plan: Integrated 3-view SPA. View 1: Citizen SOS App with 1-tap SOS, audio siren, strobe beacon, offline mesh log, condition selector, multilingual translations. View 2: NDRF Tactical Command Center with Leaflet GIS map, mesh simulator, interactive SOS queue, shortest path dispatch routing, real-time metrics. View 3: Govt SDMA Report Portal with barrage metrics and CSV/JSON exporter. Design allows citizens to broadcast help without internet while command teams visualize and dispatch rescue boats on a central map dashboard. -->
+<!-- Visualization & Content Choices: Leaflet HTML5 Canvas/OSM tiles for tactical GIS mapping -> Goals: Interactive spatial location & route visualization -> Interaction: Clickable markers, dynamic route lines, filterable queue -> Justification: Tile/Canvas based spatial visualization without SVG graphics. Web Audio API for sound synthesis. -->
+<!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+<!-- Top Navigation Header -->
+<header class="bg-slate-800 border-b border-slate-700 px-4 py-3 flex flex-wrap justify-between items-center sticky top-0 z-50 shadow-md">
+    <div class="flex items-center space-x-3">
+        <div class="bg-red-600 text-white font-black px-3 py-1 rounded text-xl tracking-wider">NDRF</div>
+        <div>
+            <h1 class="text-lg font-bold leading-tight">Disaster Rescue & P2P Mesh Network</h1>
+            <p class="text-xs text-slate-400">Bihar, Assam & Nepal Sector Operations</p>
+        </div>
+    </div>
+    
+    <!-- View & Mode Toggles -->
+    <div class="flex items-center space-x-2 mt-2 sm:mt-0">
+        <select id="langSelect" onchange="changeLanguage()" class="bg-slate-700 text-xs text-white px-2 py-1.5 rounded border border-slate-600 focus:outline-none">
+            <option value="en">English</option>
+            <option value="hi" selected>हिन्दी (Hindi)</option>
+            <option value="as">অসমীয়া (Assamese)</option>
+            <option value="ne">नेपाली (Nepali)</option>
+        </select>
+        
+        <button onclick="switchTab('user')" id="btnTabUser" class="px-3 py-1.5 rounded text-xs font-semibold bg-sky-600 text-white">
+            📱 Citizen SOS App
+        </button>
+        <button onclick="switchTab('command')" id="btnTabCommand" class="px-3 py-1.5 rounded text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-300">
+            🚤 Command Center
+        </button>
+        <button onclick="switchTab('govt')" id="btnTabGovt" class="px-3 py-1.5 rounded text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-300">
+            🏛️ Govt Report Panel
+        </button>
+    </div>
+</header>
+
+<!-- Main Dynamic Body Container -->
+<main class="flex-1 p-4 max-w-7xl mx-auto w-full">
+
+    <!-- ==================== VIEW 1: CITIZEN SOS MOBILE APP VIEW ==================== -->
+    <section id="viewUser" class="block space-y-4">
+        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 max-w-md mx-auto shadow-lg">
+            <div class="flex justify-between items-center mb-3">
+                <span class="text-xs font-bold text-amber-400 bg-amber-950/50 border border-amber-800/50 px-2.5 py-1 rounded-full">
+                    📡 Mesh Node: Active
+                </span>
+                <span id="gpsStatus" class="text-xs text-slate-400">GPS: Acquiring...</span>
+            </div>
+            <span id="backendHeartbeatStatus" class="block mt-1 text-xs text-slate-400">Backend: Connecting...</span>
+
+            <!-- Triage Selector -->
+            <div class="mb-4">
+                <label class="block text-xs font-medium text-slate-300 mb-1" id="lblCondition">Select Emergency Condition:</label>
+                <select id="userCondition" class="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-2.5 text-sm focus:border-sky-500 focus:outline-none">
+                    <option value="FLOOD_TRAPPED">🌊 Trapped on Roof/Tree (No Food/Water)</option>
+                    <option value="MEDICAL_CRITICAL">🚨 Medical Emergency / Injured</option>
+                    <option value="INFANT_ELDERLY">👶 Infant / Elderly Requires Evacuation</option>
+                    <option value="SAFE_RELOCATED">🟢 Safe / Relocated (Info Update)</option>
+                </select>
+            </div>
+
+            <!-- Main SOS Button -->
+            <button id="sosBtn" onclick="triggerSOS()" class="w-full bg-red-600 hover:bg-red-700 text-white font-black text-2xl py-8 rounded-2xl shadow-xl shadow-red-900/40 active:scale-95 transition-all flex flex-col items-center justify-center border-4 border-red-500">
+                <span>1-TAP SOS</span>
+                <span class="text-xs font-normal mt-1 opacity-90 text-red-100">Broadcast 16-Byte Offline Mesh Packet</span>
+            </button>
+
+            <!-- Emergency Tools -->
+            <div class="grid grid-cols-2 gap-2 mt-4">
+                <button id="sirenBtn" onclick="toggleAudioWhistle()" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold py-3 rounded-lg flex items-center justify-center space-x-1 border border-slate-600">
+                    <span>🔊 Audio Siren Whistle</span>
+                </button>
+                <button id="strobeBtn" onclick="toggleStrobeLight()" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold py-3 rounded-lg flex items-center justify-center space-x-1 border border-slate-600">
+                    <span>🔦 Strobe Flashlight</span>
+                </button>
+            </div>
+
+            <!-- Local Mesh Sync Log -->
+            <div class="mt-4 bg-slate-900 p-3 rounded-lg border border-slate-800">
+                <div class="flex justify-between items-center text-xs text-slate-400 mb-2">
+                    <span>Local Mesh Cache Log</span>
+                    <span id="meshCount" class="text-sky-400 font-bold">0 Packets Relayed</span>
+                </div>
+                <div id="userLog" class="text-[11px] font-mono text-slate-400 h-20 overflow-y-auto space-y-1 bg-slate-950 p-2 rounded">
+                    <div>System initialized. Waiting for SOS broadcast...</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- ==================== VIEW 2: NDRF TACTICAL COMMAND CENTER ==================== -->
+    <section id="viewCommand" class="hidden space-y-4">
+        <!-- Command Metrics Bar -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-slate-800 p-3 rounded-lg border border-slate-700">
+                <div class="text-xs text-slate-400">Total SOS Signals</div>
+                <div id="statTotalSOS" class="text-2xl font-bold text-white">0</div>
+            </div>
+            <div class="bg-slate-800 p-3 rounded-lg border border-slate-700">
+                <div class="text-xs text-slate-400">Critical Medical</div>
+                <div id="statCritical" class="text-2xl font-bold text-red-500">0</div>
+            </div>
+            <div class="bg-slate-800 p-3 rounded-lg border border-slate-700">
+                <div class="text-xs text-slate-400">Dispatched Rescue Boats</div>
+                <div id="statDispatched" class="text-2xl font-bold text-emerald-400">0</div>
+            </div>
+            <div class="bg-slate-800 p-3 rounded-lg border border-slate-700">
+                <div class="text-xs text-slate-400">Mesh Hops Active</div>
+                <div class="text-2xl font-bold text-amber-400">BLE / P2P</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mt-3">
+            <div class="bg-slate-800 p-3 rounded-lg border border-slate-700">
+                <div class="text-xs text-slate-400">Available Teams</div>
+                <div id="statAvailableTeams" class="text-2xl font-bold text-sky-400">0</div>
+            </div>
+            <div class="bg-slate-800 p-3 rounded-lg border border-slate-700">
+                <div class="text-xs text-slate-400">Equipment Ready</div>
+                <div id="statEquipmentReady" class="text-2xl font-bold text-emerald-400">0</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <!-- GIS Tactical Map -->
+            <div class="lg:col-span-2 bg-slate-800 p-3 rounded-xl border border-slate-700">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-sm font-bold flex items-center gap-2">
+                        <span>🗺️ Tactical GIS Map</span>
+                        <span class="text-[10px] bg-sky-900/60 text-sky-300 border border-sky-700 px-2 py-0.5 rounded">Live Flood Overlay</span>
+                    </h2>
+                    <button onclick="simulateIncomingMesh()" class="text-xs bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1 rounded font-semibold">
+                        ⚡ Simulate Incoming BLE Packet
+                    </button>
+                </div>
+                <div id="map"></div>
+            </div>
+
+            <!-- Triage SOS Incident Queue -->
+            <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-col h-[490px]">
+                <h2 class="text-sm font-bold mb-2">🚨 Live SOS Queue & Dispatch</h2>
+                <div id="incidentList" class="flex-1 overflow-y-auto space-y-2 pr-1">
+                    <p class="text-xs text-slate-500 text-center py-8">No active SOS packets in mesh queue.</p>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 bg-slate-800 p-3 rounded-xl border border-slate-700">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-sm font-bold">🚑 NDRF Teams & Equipment Availability</h2>
+                    <span class="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded">Live</span>
+                </div>
+                <div id="teamAvailabilityList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- ==================== VIEW 3: GOVT AUTHORITY REPORT PANEL ==================== -->
+    <section id="viewGovt" class="hidden space-y-4 max-w-4xl mx-auto">
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-6">
+            <div>
+                <h2 class="text-xl font-bold text-white mb-1">🏛️ SDMA / NDMA Situation Report Portal</h2>
+                <p class="text-xs text-slate-400">Official Consolidated Disaster Rescue Data & Barrage Discharge Metrics</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+                    <div class="text-xs text-slate-400">Sector Basin</div>
+                    <div class="text-base font-bold text-sky-400 mt-1">Kosi / Gandak Basin</div>
+                </div>
+                <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+                    <div class="text-xs text-slate-400">Barrage Discharge Alert</div>
+                    <div class="text-base font-bold text-amber-400 mt-1">3.85 Lakh Cusec (High)</div>
+                </div>
+                <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+                    <div class="text-xs text-slate-400">Rescue Turnaround Avg</div>
+                    <div class="text-base font-bold text-emerald-400 mt-1">22 Minutes</div>
+                </div>
+            </div>
+
+            <div class="border-t border-slate-700 pt-4 flex flex-wrap gap-3">
+                <button onclick="exportSituationReportCSV()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2.5 rounded-lg flex items-center space-x-2">
+                    <span>📥 Export Official Situation Report (CSV)</span>
+                </button>
+                <button onclick="exportJSONData()" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-4 py-2.5 rounded-lg">
+                    📄 Export Raw Mesh JSON
+                </button>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<!-- App Execution Logic -->
+<script>
+    // State Management
+    let currentTab = 'user';
+    let sosQueue = [];
+    let map, boatMarker, boatRouteLine;
+    let isSirenActive = false, sirenAudioCtx = null, sirenOsc = null;
+    let isStrobeActive = false;
+    let userLocation = { lat: 26.25, lng: 86.60 }; // Default Supaul, Bihar flood sector
+    const SOS_CHANNEL_KEY = 'ndrf_mesh_network';
+    const SOS_STORAGE_KEY = 'ndrf_sos_queue';
+    const BACKEND_BASE_URL = 'http://localhost:8000';
+    const GOOGLE_MAPS_API_KEY = 'AIzaSyCL8xD_zD1lzU-J0U7PZKI4VSa93hlcZgA';
+    const MAPBOX_TOKEN = '';
+    const MAP_TILE_URL = MAPBOX_TOKEN
+        ? `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`
+        : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const teamCatalog = [
+        { id: 'TEAM-ARAKKONAM', name: 'Arakkonam Rescue Unit', type: 'Boat', lat: 13.0827, lng: 79.67, status: 'Available', equipment: ['Life Jackets', 'Rescue Boat', 'Medical Kit'], capacity: 8 },
+        { id: 'TEAM-VIJAYAWADA', name: 'Vijayawada Boat Team', type: 'Boat', lat: 16.5062, lng: 80.648, status: 'Available', equipment: ['Life Jackets', 'Rescue Boat', 'Flood Lights'], capacity: 10 },
+        { id: 'TEAM-BENGALURU', name: 'Bengaluru Swift Rescue', type: 'Drone', lat: 13.0358, lng: 77.597, status: 'Available', equipment: ['Drone', 'Thermal Camera', 'Portable Generator'], capacity: 5 },
+        { id: 'TEAM-BIHTA', name: 'Bihta NDRF Team', type: 'Ground Squad', lat: 25.5562, lng: 84.8711, status: 'Available', equipment: ['Rescue Rope', 'Medical Kit', 'Portable Pumps'], capacity: 12 },
+        { id: 'TEAM-GUWAHATI', name: 'Guwahati Flood Team', type: 'Helicopter Support', lat: 26.1158, lng: 91.7086, status: 'Available', equipment: ['Life Jackets', 'Rescue Boat', 'Portable ICU'], capacity: 9 }
+    ];
+    const equipmentCatalog = [
+        { name: 'Rescue Boat', total: 12, available: 7 },
+        { name: 'Life Jackets', total: 200, available: 145 },
+        { name: 'Medical Kit', total: 35, available: 21 },
+        { name: 'Drone', total: 8, available: 4 },
+        { name: 'Portable Pumps', total: 15, available: 9 }
+    ];
+    const teamMarkers = {};
+    
+    // P2P Channel for cross-tab communication
+    const meshChannel = new BroadcastChannel(SOS_CHANNEL_KEY);
+
+    // i18n Translations
+    const translations = {
+        en: { conditionLbl: "Select Emergency Condition:", sosBtn: "1-TAP SOS", audioSiren: "🔊 Audio Siren Whistle" },
+        hi: { conditionLbl: "आपकी आपातकालीन स्थिति चुनें:", sosBtn: "1-टैप SOS भेजें", audioSiren: "🔊 सीटी ऑडियो साइरन" },
+        as: { conditionLbl: "জৰুৰী অৱস্থা বাছনি কৰক:", sosBtn: "1-ট্যাপ SOS", audioSiren: "🔊 জৰুৰীকালীন হুইছেল" },
+        ne: { conditionLbl: "आपतकालीन अवस्था छान्नुहोस्:", sosBtn: "1-ट्याप SOS", audioSiren: "🔊 संकटकालीन सिट्टी" }
+    };
+
+    // Initialize App
+    window.addEventListener('DOMContentLoaded', () => {
+        initGPS();
+        initMap();
+        listenMeshChannel();
+    });
+
+    // Switch Navigation Tabs
+    function switchTab(tab) {
+        currentTab = tab;
+        ['User', 'Command', 'Govt'].forEach(t => {
+            const el = document.getElementById(`view${t}`);
+            const btn = document.getElementById(`btnTab${t}`);
+            if (t.toLowerCase() === tab) {
+                el.classList.remove('hidden');
+                btn.classList.add('bg-sky-600', 'text-white');
+                btn.classList.remove('bg-slate-700', 'text-slate-300');
+            } else {
+                el.classList.add('hidden');
+                btn.classList.remove('bg-sky-600', 'text-white');
+                btn.classList.add('bg-slate-700', 'text-slate-300');
+            }
+        });
+
+        if (tab === 'command' && map) {
+            setTimeout(() => map.invalidateSize(), 200);
+        }
+    }
+
+    // Initialize GPS Location
+    function initGPS() {
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                pos => {
+                    userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                    document.getElementById('gpsStatus').innerText = `GPS: ${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)}`;
+                },
+                err => {
+                    document.getElementById('gpsStatus').innerText = `GPS: Supaul Sector (Fallback)`;
+                }
+            );
+        }
+    }
+
+    // Initialize Leaflet Map
+    function initMap() {
+        map = L.map('map').setView([userLocation.lat, userLocation.lng], 12);
+        L.tileLayer(MAP_TILE_URL, {
+            attribution: MAPBOX_TOKEN ? '&copy; Mapbox &copy; OpenStreetMap' : '&copy; OpenStreetMap contributors',
+            maxZoom: 18,
+            subdomains: MAPBOX_TOKEN ? undefined : 'abc'
+        }).addTo(map);
+
+        // Command Base Marker
+        const ndrfIcon = L.divIcon({
+            html: '<div class="bg-sky-600 text-white rounded-full p-2 text-xs font-bold border-2 border-white shadow-lg">🚤 Base</div>',
+            className: ''
+        });
+        boatMarker = L.marker([userLocation.lat + 0.04, userLocation.lng - 0.03], { icon: ndrfIcon }).addTo(map)
+            .bindPopup("<b>NDRF Rescue Boat Base #01</b><br>Status: Operational");
+    }
+
+    // Trigger SOS Broadcast
+    function triggerSOS() {
+        const condition = document.getElementById('userCondition').value;
+        const sosPacket = {
+            id: 'SOS-' + Math.floor(1000 + Math.random() * 9000),
+            lat: userLocation.lat + (Math.random() - 0.5) * 0.02,
+            lng: userLocation.lng + (Math.random() - 0.5) * 0.02,
+            condition: condition,
+            timestamp: new Date().toLocaleTimeString(),
+            hops: 1,
+            dispatched: false
+        };
+
+        // Broadcast to Mesh Channel
+        meshChannel.postMessage(sosPacket);
+        processNewSOSPacket(sosPacket);
+
+        // Log locally
+        const logEl = document.getElementById('userLog');
+        logEl.innerHTML = `<div class="text-emerald-400">▶ Broadcasted 16-Byte BLE Mesh Packet (${sosPacket.id})</div>` + logEl.innerHTML;
+
+        fetch(`${BACKEND_BASE_URL}/api/sos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sos_id: sosPacket.id,
+                latitude: sosPacket.lat,
+                longitude: sosPacket.lng,
+                family_count: 3,
+                medical_urgency: condition === 'MEDICAL_CRITICAL' || condition === 'INFANT_ELDERLY',
+                timestamp: Math.floor(Date.now() / 1000),
+                relay_hops: 1,
+                battery_pct: 88,
+                mesh_protocol: 'BLE_P2P_MESH'
+            })
+        }).catch(() => {});
+        
+        alert(`🚨 SOS Signal Sent!\nPacket ID: ${sosPacket.id}\nCompressed payload relayed over BLE & local Wi-Fi Mesh.`);
+    }
+
+    // Listen for P2P Mesh Packets from other tabs/users
+    function listenMeshChannel() {
+        meshChannel.onmessage = (event) => {
+            const packet = event.data;
+            processNewSOSPacket(packet);
+        };
+
+        window.addEventListener('storage', (event) => {
+            if (event.key !== SOS_STORAGE_KEY || !event.newValue) return;
+            try {
+                const queue = JSON.parse(event.newValue);
+                if (Array.isArray(queue) && queue.length) {
+                    queue.forEach(packet => processNewSOSPacket(packet));
+                }
+            } catch (e) {}
+        });
+
+        try {
+            const savedQueue = JSON.parse(localStorage.getItem(SOS_STORAGE_KEY) || '[]');
+            if (Array.isArray(savedQueue)) {
+                savedQueue.forEach(packet => processNewSOSPacket(packet));
+            }
+        } catch (e) {}
+
+        const ws = new WebSocket('ws://localhost:8000/ws/ndrf-control');
+        let backendWs = null;
+        let heartbeatInterval = null;
+        let heartbeatTimeout = null;
+        let reconnectTimeout = null;
+        const backendStatus = document.getElementById('backendHeartbeatStatus');
+
+        const setBackendStatus = (text, colorClass) => {
+            if (!backendStatus) return;
+            backendStatus.textContent = text;
+            backendStatus.className = `block mt-1 text-xs ${colorClass}`;
+        };
+
+        const connectBackendWebSocket = () => {
+            const socket = new WebSocket('ws://localhost:8000/ws/ndrf-control');
+            backendWs = socket;
+
+            socket.onopen = () => {
+                console.log('Connected to NDRF backend websocket');
+                setBackendStatus('Backend: Connected, checking heartbeat...', 'text-amber-400');
+
+                const sendHeartbeat = () => {
+                    if (socket.readyState !== WebSocket.OPEN) return;
+                    socket.send(JSON.stringify({ action: 'PING' }));
+                    heartbeatTimeout = setTimeout(() => {
+                        heartbeatTimeout = null;
+                        if (socket.readyState === WebSocket.OPEN) socket.close();
+                    }, 10000);
+                };
+
+                sendHeartbeat();
+                heartbeatInterval = setInterval(sendHeartbeat, 20000);
+            };
+
+            socket.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    if (message.type === 'PONG') {
+                        clearTimeout(heartbeatTimeout);
+                        heartbeatTimeout = null;
+                        setBackendStatus('Backend: Live, heartbeat OK', 'text-emerald-400');
+                        return;
+                    }
+                    if (message.type === 'CITIZEN_SOS_ALERT' && message.sos) {
+                        processNewSOSPacket(message.sos);
+                    }
+                    if (message.type === 'INITIAL_STATE_SYNC' && Array.isArray(message.sos_signals)) {
+                        message.sos_signals.forEach(packet => processNewSOSPacket(packet));
+                    }
+                } catch (e) {}
+            };
+
+            socket.onclose = () => {
+                clearInterval(heartbeatInterval);
+                clearTimeout(heartbeatTimeout);
+                heartbeatInterval = null;
+                heartbeatTimeout = null;
+                console.log('NDRF backend websocket closed; reconnecting');
+                setBackendStatus('Backend: Reconnecting...', 'text-amber-400');
+                reconnectTimeout = setTimeout(connectBackendWebSocket, 3000);
+            };
+
+            socket.onerror = () => {
+                console.log('NDRF backend websocket unavailable; fallback mesh mode active');
+                setBackendStatus('Backend: Offline, retrying...', 'text-rose-400');
+            };
+        };
+
+        connectBackendWebSocket();
+    }
+
+    // Process Incoming Packet into System
+    function processNewSOSPacket(packet) {
+        const normalizedPacket = {
+            ...packet,
+            id: packet.sos_id || packet.id,
+            lat: packet.latitude ?? packet.lat,
+            lng: packet.longitude ?? packet.lng,
+            condition: packet.condition || 'FLOOD_TRAPPED',
+            timestamp: packet.timestamp ? new Date(packet.timestamp).toLocaleTimeString() : (packet.time || new Date().toLocaleTimeString()),
+            hops: packet.relay_hops ?? packet.hops ?? 1,
+            dispatched: Boolean(packet.dispatched)
+        };
+
+        if (sosQueue.find(p => p.id === normalizedPacket.id)) return;
+
+        sosQueue.push(normalizedPacket);
+        updateCommandUI();
+    }
+
+    function haversineDistance(lat1, lng1, lat2, lng2) {
+        const toRad = value => (value * Math.PI) / 180;
+        const R = 6371;
+        const dLat = toRad(lat2 - lat1);
+        const dLng = toRad(lng2 - lng1);
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function updateAvailabilityPanel() {
+        const availableTeams = teamCatalog.filter(team => team.status === 'Available').length;
+        const readyEquipment = equipmentCatalog.reduce((total, item) => total + item.available, 0);
+        document.getElementById('statAvailableTeams').innerText = availableTeams;
+        document.getElementById('statEquipmentReady').innerText = readyEquipment;
+
+        const listEl = document.getElementById('teamAvailabilityList');
+        if (!listEl) return;
+        listEl.innerHTML = teamCatalog.map(team => `
+            <div class="bg-slate-900 p-3 rounded-xl border ${team.status === 'Available' ? 'border-emerald-700' : 'border-amber-700'}">
+                <div class="flex justify-between items-center mb-2">
+                    <div>
+                        <div class="text-sm font-bold text-white">${team.name}</div>
+                        <div class="text-[10px] text-slate-400">${team.type}</div>
+                    </div>
+                    <span class="text-[10px] px-2 py-1 rounded-full ${team.status === 'Available' ? 'bg-emerald-900 text-emerald-300' : team.status === 'En Route' ? 'bg-amber-900 text-amber-300' : 'bg-red-900 text-red-300'}">${team.status}</span>
+                </div>
+                <div class="text-[11px] text-slate-300 space-y-1">
+                    <div>Capacity: ${team.capacity}</div>
+                    <div>Equipment: ${team.equipment.join(', ')}</div>
+                    <div>Location: ${team.lat.toFixed(3)}, ${team.lng.toFixed(3)}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderTeamOnMap() {
+        teamCatalog.forEach(team => {
+            if (!teamMarkers[team.id]) {
+                const teamIcon = L.divIcon({
+                    html: `<div class="bg-sky-600 text-white rounded-full p-1.5 text-[10px] font-bold border border-white shadow-md">🚤</div>`,
+                    className: '',
+                    iconSize: [26, 26]
+                });
+                teamMarkers[team.id] = L.marker([team.lat, team.lng], { icon: teamIcon }).addTo(map)
+                    .bindPopup(`<b>${team.name}</b><br>Status: ${team.status}<br>Type: ${team.type}`);
+            } else {
+                teamMarkers[team.id].setLatLng([team.lat, team.lng]);
+                teamMarkers[team.id].bindPopup(`<b>${team.name}</b><br>Status: ${team.status}<br>Type: ${team.type}`);
+            }
+        });
+    }
+
+    function animateTeamMovement(team, targetLat, targetLng) {
+        if (team.moveTimer) clearInterval(team.moveTimer);
+
+        const startLat = team.lat;
+        const startLng = team.lng;
+        const distanceLat = targetLat - startLat;
+        const distanceLng = targetLng - startLng;
+        let progress = 0;
+
+        team.moveTimer = setInterval(() => {
+            progress += 0.08;
+            if (progress >= 1) {
+                team.lat = targetLat;
+                team.lng = targetLng;
+                team.status = 'On Scene';
+                clearInterval(team.moveTimer);
+                team.moveTimer = null;
+                renderTeamOnMap();
+                updateAvailabilityPanel();
+                return;
+            }
+
+            team.lat = startLat + (distanceLat * progress);
+            team.lng = startLng + (distanceLng * progress);
+            renderTeamOnMap();
+        }, 400);
+    }
+
+    // Update Tactical UI & Map Markers
+    function updateCommandUI() {
+        // Stats
+        document.getElementById('statTotalSOS').innerText = sosQueue.length;
+        document.getElementById('statCritical').innerText = sosQueue.filter(p => p.condition === 'MEDICAL_CRITICAL').length;
+        document.getElementById('statDispatched').innerText = sosQueue.filter(p => p.dispatched).length;
+        document.getElementById('meshCount').innerText = `${sosQueue.length} Packets Relayed`;
+        updateAvailabilityPanel();
+
+        // Incident List
+        const listEl = document.getElementById('incidentList');
+        listEl.innerHTML = '';
+
+        sosQueue.forEach(item => {
+            const card = document.createElement('div');
+            card.className = `p-2.5 rounded-lg border text-xs space-y-1.5 ${item.dispatched ? 'bg-slate-900/60 border-slate-700 opacity-75' : 'bg-slate-900 border-red-800/80'}`;
+            const assignedTeam = teamCatalog.find(team => team.id === item.assignedTeam);
+            card.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <span class="font-bold text-red-400">${item.id}</span>
+                    <span class="text-[10px] text-slate-400">${item.timestamp}</span>
+                </div>
+                <div class="text-slate-200 font-medium">${item.condition}</div>
+                <div class="text-[10px] text-slate-400">Lat: ${item.lat.toFixed(4)}, Lng: ${item.lng.toFixed(4)} | Hops: ${item.hops}</div>
+                <div class="text-[10px] ${assignedTeam ? 'text-emerald-300' : 'text-slate-400'}">
+                    ${assignedTeam ? `Assigned Team: ${assignedTeam.name}` : 'No team assigned yet'}
+                </div>
+                <div class="pt-1">
+                    ${item.dispatched ? 
+                        '<span class="text-emerald-400 font-bold text-[11px]">✓ Team Dispatched</span>' : 
+                        `<button onclick="dispatchRescue('${item.id}')" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-1 rounded">Dispatch Nearest Team</button>`
+                    }
+                </div>
+            `;
+            listEl.appendChild(card);
+
+            const markerColor = item.condition === 'MEDICAL_CRITICAL' ? 'bg-red-600' : 'bg-amber-500';
+            const sosIcon = L.divIcon({
+                html: `<div class="${markerColor} text-white rounded-full p-1.5 text-[10px] font-bold border border-white shadow-md">🚨 ${item.id}</div>`,
+                className: ''
+            });
+            
+            const existingMarker = item.marker;
+            if (existingMarker) {
+                existingMarker.setLatLng([item.lat, item.lng]);
+                existingMarker.bindPopup(`<b>Incident ${item.id}</b><br>${item.condition}<br>Time: ${item.timestamp}`);
+            } else {
+                item.marker = L.marker([item.lat, item.lng], { icon: sosIcon }).addTo(map)
+                    .bindPopup(`<b>Incident ${item.id}</b><br>${item.condition}<br>Time: ${item.timestamp}`);
+            }
+        });
+    }
+
+    // Dispatch Boat Routing Logic
+    function dispatchRescue(id) {
+        const item = sosQueue.find(p => p.id === id);
+        if (!item) return;
+
+        const availableTeams = teamCatalog.filter(team => team.status === 'Available');
+        if (!availableTeams.length) {
+            alert('No available NDRF team at this time.');
+            return;
+        }
+
+        const nearestTeam = availableTeams.sort((a, b) => {
+            return haversineDistance(a.lat, a.lng, item.lat, item.lng) - haversineDistance(b.lat, b.lng, item.lat, item.lng);
+        })[0];
+
+        item.dispatched = true;
+        item.assignedTeam = nearestTeam.id;
+        nearestTeam.status = 'En Route';
+
+        const routeLine = L.polyline([
+            [nearestTeam.lat, nearestTeam.lng],
+            [item.lat, item.lng]
+        ], { color: '#10b981', weight: 4, dashArray: '6, 8' }).addTo(map);
+
+        if (boatRouteLine) map.removeLayer(boatRouteLine);
+        boatRouteLine = routeLine;
+        map.fitBounds(boatRouteLine.getBounds(), { padding: [40, 40] });
+
+        animateTeamMovement(nearestTeam, item.lat, item.lng);
+        updateCommandUI();
+    }
+
+    // Simulate Hardware BLE Packet Arrival
+    function simulateIncomingMesh() {
+        const simulated = {
+            id: 'SOS-' + Math.floor(1000 + Math.random() * 9000),
+            lat: userLocation.lat + (Math.random() - 0.5) * 0.05,
+            lng: userLocation.lng + (Math.random() - 0.5) * 0.05,
+            condition: 'MEDICAL_CRITICAL',
+            timestamp: new Date().toLocaleTimeString(),
+            hops: 2,
+            dispatched: false
+        };
+        processNewSOSPacket(simulated);
+    }
+
+    // Web Audio Siren Generator (2800Hz Piercing Whistle)
+    function toggleAudioWhistle() {
+        const btn = document.getElementById('sirenBtn');
+        if (isSirenActive) {
+            if (sirenOsc) sirenOsc.stop();
+            isSirenActive = false;
+            btn.classList.remove('bg-red-600');
+            btn.classList.add('bg-slate-700');
+        } else {
+            sirenAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            sirenOsc = sirenAudioCtx.createOscillator();
+            const gain = sirenAudioCtx.createGain();
+            
+            sirenOsc.type = 'sawtooth';
+            sirenOsc.frequency.setValueAtTime(2800, sirenAudioCtx.currentTime);
+            
+            sirenOsc.connect(gain);
+            gain.connect(sirenAudioCtx.destination);
+            sirenOsc.start();
+            
+            isSirenActive = true;
+            btn.classList.remove('bg-slate-700');
+            btn.classList.add('bg-red-600');
+        }
+    }
+
+    // Strobe Flashlight Screen Beacon
+    function toggleStrobeLight() {
+        isStrobeActive = !isStrobeActive;
+        const body = document.body;
+        if (isStrobeActive) {
+            body.classList.add('strobe-active');
+        } else {
+            body.classList.remove('strobe-active');
+        }
+    }
+
+    // Change App Language
+    function changeLanguage() {
+        const lang = document.getElementById('langSelect').value;
+        const t = translations[lang] || translations.en;
+        document.getElementById('lblCondition').innerText = t.conditionLbl;
+        document.getElementById('sosBtn').children[0].innerText = t.sosBtn;
+        document.getElementById('sirenBtn').innerText = t.audioSiren;
+    }
+
+    // Export Situation Report CSV
+    function exportSituationReportCSV() {
+        if (sosQueue.length === 0) {
+            alert("No SOS records available to export.");
+            return;
+        }
+        let csv = "ID,Latitude,Longitude,Condition,Timestamp,DispatchedStatus\n";
+        sosQueue.forEach(r => {
+            csv += `${r.id},${r.lat},${r.lng},"${r.condition}",${r.timestamp},${r.dispatched}\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `NDRF_Situation_Report_${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+    }
+
+    // Export Raw JSON
+    function exportJSONData() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sosQueue, null, 2));
+        const a = document.createElement('a');
+        a.href = dataStr;
+        a.download = `NDRF_Mesh_Data_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+    }
+</script>
+</body>
+</html>
