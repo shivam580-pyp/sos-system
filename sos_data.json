@@ -70,6 +70,16 @@
       "userId": "usr-admin-demo",
       "role": "ADMIN",
       "createdAt": 1790622346087
+    },
+    "e143d1e0c988edbf2deefdf45a6992486041d1ffba6d7e9f6e801ebe624e858f": {
+      "userId": "usr-citizen-demo",
+      "role": "CITIZEN",
+      "createdAt": 1790623840431
+    },
+    "eca42427f64dc5edd97e12b315d3b279d7188d72ce909a94374337aa160559cd": {
+      "userId": "usr-admin-demo",
+      "role": "ADMIN",
+      "createdAt": 1790623850144
     }
   },
   "sosList": [
@@ -232,5 +242,5 @@
       "medics": 5
     }
   ],
-  "lastSaved": "2026-09-28T19:05:46.087Z"
+  "lastSaved": "2026-09-28T19:30:50.144Z"
 }
