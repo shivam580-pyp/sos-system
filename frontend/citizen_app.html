@@ -11,20 +11,30 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="/manifest.json">
 
+    <!-- Leaflet GIS Map CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        #citizenLiveMap {
+            height: 240px;
+            width: 100%;
+            border-radius: 1rem;
+            z-index: 1;
+            background-color: #1e293b;
+        }
+    </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans antialiased pb-20">
 
-<!-- App Header -->
+<!-- Citizen App Header (No Command Center Link) -->
 <header class="bg-slate-800 border-b border-slate-700 px-4 py-3 sticky top-0 z-40 shadow-xl flex flex-wrap justify-between items-center gap-2">
     <div class="flex items-center space-x-2">
         <span class="bg-red-600 text-white font-black text-xs px-2.5 py-1 rounded-lg tracking-widest shadow">NDRF INDIA</span>
         <div>
-            <h1 class="text-sm font-bold leading-tight">NATIONAL CITIZEN SOS</h1>
+            <h1 class="text-sm font-bold leading-tight">CITIZEN EMERGENCY SOS</h1>
             <p class="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
                 <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span id="txtNetStatus">Online API & BLE Mesh Sync</span>
@@ -32,12 +42,9 @@
         </div>
     </div>
 
-    <!-- Navigation & User Auth Status -->
+    <!-- User Auth Status & Language Switcher -->
     <div class="flex items-center space-x-2">
         <div id="userAuthBadge"></div>
-        <a href="/command_center.html" class="bg-sky-700 hover:bg-sky-600 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-sky-600">
-            🚤 Command Center
-        </a>
         <select id="langSelect" onchange="changeLanguage()" class="bg-slate-900 text-slate-200 text-xs px-2 py-1.5 rounded-lg border border-slate-700 focus:outline-none focus:ring-1 focus:ring-sky-500 font-medium">
             <option value="hi" selected>हिन्दी</option>
             <option value="en">English</option>
@@ -69,6 +76,46 @@
         <button onclick="promptPWAInstall()" class="bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow">
             Install
         </button>
+    </div>
+
+    <!-- LIVE RESCUE TEAM TRACKER CARD (Shows status, assigned boat & live movement) -->
+    <div id="liveRescueTrackerCard" class="hidden bg-slate-800 border-2 border-emerald-500 p-4 rounded-3xl shadow-2xl space-y-3">
+        <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+            <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                <span>🚤 Live Rescue Tracker</span>
+            </span>
+            <span id="trackerStatusBadge" class="text-xs font-bold text-amber-400 animate-pulse">
+                PENDING APPROVAL
+            </span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700">
+                <span class="text-slate-400 block text-[10px]">Assigned NDRF Team:</span>
+                <span id="trackerTeamName" class="font-bold text-white text-[11px] block mt-0.5">Calculating...</span>
+            </div>
+            <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700">
+                <span class="text-slate-400 block text-[10px]">Rescue Boat Unit:</span>
+                <span id="trackerBoatName" class="font-bold text-emerald-400 text-[11px] block mt-0.5">Awaiting Approval</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700">
+                <span class="text-slate-400 block text-[10px]">Distance to You:</span>
+                <span id="trackerDistanceKm" class="font-mono font-bold text-sky-400 text-sm">--</span>
+            </div>
+            <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700">
+                <span class="text-slate-400 block text-[10px]">Estimated Arrival (ETA):</span>
+                <span id="trackerEtaMin" class="font-mono font-bold text-emerald-400 text-sm">--</span>
+            </div>
+        </div>
+
+        <!-- Live Rescue Map View -->
+        <div class="space-y-1">
+            <span class="text-[10px] text-slate-400 font-bold block">🗺️ Live GPS & Rescue Boat Position:</span>
+            <div id="citizenLiveMap"></div>
+        </div>
     </div>
 
     <!-- SOS TRIGGER SECTION -->

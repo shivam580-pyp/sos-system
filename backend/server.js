@@ -21,7 +21,6 @@ const MIME_TYPES = {
 };
 
 const server = http.createServer((req, res) => {
-    // Enable CORS with Authorization header
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -102,6 +101,10 @@ const server = http.createServer((req, res) => {
         return sosController.getSOSList(req, res);
     }
 
+    if (pathname === '/api/sos/my-status' && req.method === 'GET') {
+        return sosController.getUserActiveSOS(req, res);
+    }
+
     if (pathname === '/api/sos' && req.method === 'POST') {
         return getJsonBody((err, body) => {
             if (err) return res.status(400).json({ success: false, error: 'Invalid JSON' });
@@ -146,7 +149,7 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, () => {
     console.log(`=================================================`);
-    console.log(`🚨 NDRF Auth & Rescue Backend Server Running!`);
+    console.log(`🚨 NDRF Nationwide Rescue Server Running!`);
     console.log(`📡 URL: http://localhost:${PORT}`);
     console.log(`🔑 Login Portal:           http://localhost:${PORT}/login.html`);
     console.log(`📱 Citizen Mobile SOS App: http://localhost:${PORT}/citizen_app.html`);

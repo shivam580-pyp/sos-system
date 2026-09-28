@@ -13,22 +13,19 @@
 </head>
 <body class="flex flex-col min-h-screen bg-slate-900 text-slate-100 font-sans">
 
-<!-- Top Navigation Header -->
+<!-- Top Navigation Header (Strict NDRF Officer View) -->
 <header class="bg-slate-800 border-b border-slate-700 px-4 py-3 flex flex-wrap justify-between items-center sticky top-0 z-50 shadow-md">
     <div class="flex items-center space-x-3">
-        <div class="bg-red-600 text-white font-black px-3 py-1 rounded text-xl tracking-wider">NDRF</div>
+        <div class="bg-red-600 text-white font-black px-3 py-1 rounded text-xl tracking-wider">NDRF HQ</div>
         <div>
             <h1 class="text-lg font-bold leading-tight">Tactical Command Center & GIS Map</h1>
-            <p class="text-xs text-slate-400">Bihar, Assam & Pan-India Sector Operations</p>
+            <p class="text-xs text-slate-400">Nationwide Sector Operations (Bihar, Assam, Nepal Border & All 16 Battalions)</p>
         </div>
     </div>
 
     <!-- Navigation Buttons & User Badge -->
     <div class="flex items-center space-x-2 mt-2 sm:mt-0">
         <div id="userAuthBadge"></div>
-        <a href="/citizen_app.html" class="px-3 py-1.5 rounded text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-300">
-            📱 Citizen SOS App
-        </a>
         <a href="/command_center.html" class="px-3 py-1.5 rounded text-xs font-semibold bg-sky-600 text-white">
             🚤 Command Center
         </a>
@@ -56,8 +53,8 @@
             <div id="statDispatched" class="text-2xl font-bold text-emerald-400">0</div>
         </div>
         <div class="bg-slate-800 p-3 rounded-lg border border-slate-700">
-            <div class="text-xs text-slate-400">Mesh Network Node</div>
-            <div class="text-2xl font-bold text-amber-400">BLE P2P</div>
+            <div class="text-xs text-slate-400">Nationwide Bases Active</div>
+            <div class="text-2xl font-bold text-amber-400">16 Battalions</div>
         </div>
     </div>
 
@@ -68,7 +65,7 @@
             <div class="flex justify-between items-center mb-2">
                 <h2 class="text-sm font-bold flex items-center gap-2">
                     <span>🗺️ Tactical GIS Map</span>
-                    <span class="text-[10px] bg-sky-900/60 text-sky-300 border border-sky-700 px-2 py-0.5 rounded">Live Leaflet Overlay</span>
+                    <span class="text-[10px] bg-sky-900/60 text-sky-300 border border-sky-700 px-2 py-0.5 rounded">All 16 NDRF Bases & Real-Time Tracking</span>
                 </h2>
                 <button onclick="simulateIncomingMesh()" class="text-xs bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1 rounded font-semibold">
                     ⚡ Simulate Incoming BLE Packet
@@ -79,7 +76,7 @@
 
         <!-- Triage SOS Incident Queue -->
         <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-col h-[490px]">
-            <h2 class="text-sm font-bold mb-2">🚨 Live SOS Queue & Dispatch</h2>
+            <h2 class="text-sm font-bold mb-2">🚨 Live SOS Queue & Nearest Base Recommendation</h2>
             <div id="incidentList" class="flex-1 overflow-y-auto space-y-2 pr-1">
                 <p class="text-xs text-slate-500 text-center py-8">Loading SOS packets...</p>
             </div>
@@ -88,7 +85,7 @@
         <!-- NDRF Teams & Equipment Monitor -->
         <div class="lg:col-span-3 bg-slate-800 p-3 rounded-xl border border-slate-700">
             <div class="flex justify-between items-center mb-2">
-                <h2 class="text-sm font-bold">🚑 NDRF Teams & Equipment Availability</h2>
+                <h2 class="text-sm font-bold">🚑 Nationwide NDRF Battalions & Equipment Availability</h2>
                 <span class="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded">Active Readiness</span>
             </div>
             <div id="teamAvailabilityList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3"></div>

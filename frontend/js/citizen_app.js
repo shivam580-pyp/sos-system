@@ -1,8 +1,8 @@
 /**
- * Citizen Mobile SOS App Client Controller with Authenticated SOS Sync
+ * Citizen Mobile SOS App Client Controller with Real-Time GPS & Rescue Tracker
  */
 
-let userLocation = { lat: 13.0827, lng: 80.2707 }; // Default fallback
+let userLocation = { lat: 25.5941, lng: 85.1376 }; // Real GPS or Bihar default fallback
 let isSirenActive = false;
 let sirenAudioCtx = null;
 let sirenOsc = null;
@@ -10,6 +10,12 @@ let sirenGain = null;
 let isStrobeActive = false;
 let meshNet = null;
 let deferredPrompt = null;
+
+let citizenMapInstance = null;
+let citizenUserMarker = null;
+let citizenBoatMarker = null;
+let activeSosId = null;
+let trackingInterval = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     initApp();
@@ -20,6 +26,8 @@ function initApp() {
     initMeshNetwork();
     registerServiceWorker();
     setupPWAPrompt();
+    initCitizenMap();
+    checkMyActiveSOSStatus();
 }
 
 function fetchGPSLocation() {
@@ -34,13 +42,41 @@ function fetchGPSLocation() {
                 if (coordsEl) {
                     coordsEl.innerText = `${userLocation.lat}° N, ${userLocation.lng}° E`;
                 }
+                updateCitizenMapLocation();
             },
             (err) => {
-                if (coordsEl) coordsEl.innerText = `GPS Active: 13.0827° N, 80.2707° E`;
+                if (coordsEl) coordsEl.innerText = `GPS Active: ${userLocation.lat}° N, ${userLocation.lng}° E`;
+                updateCitizenMapLocation();
             },
             { enableHighAccuracy: true, timeout: 10000 }
         );
     }
+}
+
+function initCitizenMap() {
+    const mapEl = document.getElementById('citizenLiveMap');
+    if (!mapEl) return;
+
+    citizenMapInstance = L.map('citizenLiveMap').setView([userLocation.lat, userLocation.lng], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; NDRF Rescue Tracking | OpenStreetMap',
+        maxZoom: 18
+    }).addTo(citizenMapInstance);
+
+    citizenUserMarker = L.circleMarker([userLocation.lat, userLocation.lng], {
+        radius: 12,
+        fillColor: '#dc2626',
+        color: '#ffffff',
+        weight: 3,
+        fillOpacity: 1
+    }).addTo(citizenMapInstance).bindPopup("<b>📍 Your Real GPS Location</b>");
+}
+
+function updateCitizenMapLocation() {
+    if (!citizenMapInstance || !citizenUserMarker) return;
+    citizenUserMarker.setLatLng([userLocation.lat, userLocation.lng]);
+    citizenMapInstance.setView([userLocation.lat, userLocation.lng], 13);
 }
 
 function initMeshNetwork() {
@@ -53,7 +89,6 @@ function sendSOS() {
     const conditionEl = document.getElementById('sosCondition');
     const landmarkEl = document.getElementById('manualLandmark');
     const floorEl = document.getElementById('manualFloor');
-
     const currentUser = Auth.getUser();
 
     const sosPacket = {
@@ -69,29 +104,103 @@ function sendSOS() {
         source: 'CITIZEN_PWA_APP'
     };
 
-    const headers = {
-        'Content-Type': 'application/json',
-        ...Auth.getAuthHeaders()
-    };
+    activeSosId = sosPacket.id;
 
-    // 1. Send to Backend REST API with Auth Headers
     fetch('/api/sos', {
         method: 'POST',
-        headers: headers,
+        headers: {
+            'Content-Type': 'application/json',
+            ...Auth.getAuthHeaders()
+        },
         body: JSON.stringify(sosPacket)
     }).then(res => res.json())
       .then(data => {
-          logSOSMessage(`✅ [HQ SERVER SYNC] SOS Logged for ${sosPacket.citizenName} (ID: ${sosPacket.id})`);
+          logSOSMessage(`✅ [HQ SERVER SYNC] SOS Logged (ID: ${sosPacket.id})`);
+          startRescueTracking();
       })
       .catch(err => {
           logSOSMessage(`⚠️ [OFFLINE MESH] Server Unreachable. Broadcasting via BLE Mesh.`);
       });
 
-    // 2. Broadcast via Local Mesh Network
     meshNet.broadcastSOS(sosPacket);
+    startRescueTracking();
+    alert(`🚨 EMERGENCY SOS BROADCASTED!\nSender: ${sosPacket.citizenName}\nNDRF Control Room and nearby rescue teams notified via Web & Mesh Network.`);
+}
 
-    // Visual feedback
-    alert(`🚨 EMERGENCY SOS BROADCASTED!\nSender: ${sosPacket.citizenName}\nNDRF Control Room and rescue teams notified via Web & Mesh Network.`);
+function checkMyActiveSOSStatus() {
+    fetch('/api/sos/my-status', {
+        headers: Auth.getAuthHeaders()
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success && data.data) {
+            activeSosId = data.data.id;
+            renderTrackerCard(data.data);
+            startRescueTracking();
+        }
+    })
+    .catch(() => {});
+}
+
+function startRescueTracking() {
+    if (trackingInterval) clearInterval(trackingInterval);
+    trackingInterval = setInterval(pollRescueTracker, 3000);
+    pollRescueTracker();
+}
+
+function pollRescueTracker() {
+    fetch('/api/sos/my-status', {
+        headers: Auth.getAuthHeaders()
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success && data.data) {
+            renderTrackerCard(data.data);
+        }
+    });
+}
+
+function renderTrackerCard(sos) {
+    const card = document.getElementById('liveRescueTrackerCard');
+    if (!card) return;
+
+    card.classList.remove('hidden');
+
+    const statusBadge = document.getElementById('trackerStatusBadge');
+    const teamName = document.getElementById('trackerTeamName');
+    const boatName = document.getElementById('trackerBoatName');
+    const distanceKm = document.getElementById('trackerDistanceKm');
+    const etaMin = document.getElementById('trackerEtaMin');
+
+    if (sos.status === 'PENDING') {
+        if (statusBadge) statusBadge.innerText = "🚨 PENDING APPROVAL (Broadcasting to Nearest NDRF Base)";
+        if (statusBadge) statusBadge.className = "text-xs font-bold text-amber-400 animate-pulse";
+        if (teamName) teamName.innerText = sos.nearestTeam ? `${sos.nearestTeam.name} (${sos.nearestTeam.distanceKm} km away)` : "Calculating nearest NDRF team...";
+        if (boatName) boatName.innerText = "Awaiting NDRF Command Dispatch...";
+        if (distanceKm) distanceKm.innerText = sos.nearestTeam ? `${sos.nearestTeam.distanceKm} km` : "--";
+        if (etaMin) etaMin.innerText = "Calculating...";
+    } else if (sos.status === 'DISPATCHED' || sos.status === 'RESCUE_IN_PROGRESS') {
+        if (statusBadge) statusBadge.innerText = "🚤 RESCUE TEAM DISPATCHED & EN ROUTE!";
+        if (statusBadge) statusBadge.className = "text-xs font-bold text-emerald-400 animate-pulse";
+        if (teamName) teamName.innerText = sos.assignedTeamName || "NDRF 9th Bn Team Alpha";
+        if (boatName) boatName.innerText = sos.dispatchedBoat || "NDRF-RESCUE-BOAT-01";
+        if (distanceKm) distanceKm.innerText = `${sos.distanceToVictimKm || 0} km`;
+        if (etaMin) etaMin.innerText = `${sos.etaMinutes || 0} Mins`;
+
+        // Render live boat location on Citizen Mini Map
+        if (citizenMapInstance && sos.boatLat && sos.boatLng) {
+            if (!citizenBoatMarker) {
+                citizenBoatMarker = L.marker([sos.boatLat, sos.boatLng], {
+                    icon: L.divIcon({
+                        className: 'custom-boat-icon',
+                        html: '<div style="background:#10b981; color:white; font-size:16px; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid white; box-shadow:0 0 10px #10b981;">🚤</div>'
+                    })
+                }).addTo(citizenMapInstance).bindPopup(`<b>🚤 ${sos.dispatchedBoat}</b><br>En route to your GPS position!`);
+            } else {
+                citizenBoatMarker.setLatLng([sos.boatLat, sos.boatLng]);
+            }
+        }
+    }
 }
 
 function logSOSMessage(msg) {
@@ -106,7 +215,7 @@ function logSOSMessage(msg) {
     logContainer.prepend(entry);
 }
 
-/* Audio Siren Synthesizer (2800Hz Pulse) */
+/* Physical Alert Tools */
 function toggleWhistleSiren() {
     const btn = document.getElementById('sirenBtn');
     if (!isSirenActive) {
@@ -128,11 +237,11 @@ function startSiren() {
     sirenGain = sirenAudioCtx.createGain();
 
     sirenOsc.type = 'sine';
-    sirenOsc.frequency.setValueAtTime(2800, sirenAudioCtx.currentTime); // 2800 Hz rescue whistle freq
+    sirenOsc.frequency.setValueAtTime(2800, sirenAudioCtx.currentTime);
 
     const lfo = sirenAudioCtx.createOscillator();
     const lfoGain = sirenAudioCtx.createGain();
-    lfo.frequency.value = 4; // 4 Hz pulses per sec
+    lfo.frequency.value = 4;
     lfoGain.gain.value = 400;
 
     lfo.connect(sirenOsc.frequency);
@@ -150,7 +259,6 @@ function stopSiren() {
     }
 }
 
-/* Screen Strobe Beacon */
 function toggleStrobeBeacon() {
     const btn = document.getElementById('strobeBtn');
     isStrobeActive = !isStrobeActive;
@@ -163,7 +271,6 @@ function toggleStrobeBeacon() {
     }
 }
 
-/* Multilingual Language Switcher */
 function changeLanguage() {
     const langSelect = document.getElementById('langSelect');
     const lang = langSelect ? langSelect.value : 'hi';
