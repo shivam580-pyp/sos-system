@@ -60,9 +60,39 @@
       "userId": "usr-admin-demo",
       "role": "ADMIN",
       "createdAt": 1790622176066
+    },
+    "cf562f2a6553143c32119c1b166cf2861266dc84fdb8b7da54dfb8efc259ff13": {
+      "userId": "usr-1790621622175-613",
+      "role": "CITIZEN",
+      "createdAt": 1790622316789
+    },
+    "d82e113892b7192e2aba0ef6bedc04af6ed1e0e43de615b5736f3bb843dcab24": {
+      "userId": "usr-admin-demo",
+      "role": "ADMIN",
+      "createdAt": 1790622346087
     }
   },
   "sosList": [
+    {
+      "id": "sos-1790622323254-141",
+      "userId": "usr-1790621622175-613",
+      "citizenName": "akshit",
+      "citizenPhone": "9988776655",
+      "emergencyContact": "1122334455",
+      "bloodGroup": "O+",
+      "medicalNotes": "",
+      "lat": 25.494603,
+      "lng": 81.853293,
+      "condition": "FLOOD_TRAPPED",
+      "district": "Pan-India SOS Zone",
+      "status": "PENDING",
+      "landmark": "Unspecified",
+      "floor": 0,
+      "timestamp": 1790622323254,
+      "hops": 1,
+      "source": "CITIZEN_PWA_APP",
+      "nearestTeam": null
+    },
     {
       "id": "sos-1790622176062-821",
       "userId": "usr-1790622175899-350",
@@ -202,5 +232,5 @@
       "medics": 5
     }
   ],
-  "lastSaved": "2026-09-28T19:02:56.066Z"
+  "lastSaved": "2026-09-28T19:05:46.087Z"
 }
