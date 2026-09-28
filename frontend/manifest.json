@@ -1,0 +1,15 @@
+{
+  "name": "NDRF Nationwide Citizen SOS App",
+  "short_name": "NDRF SOS",
+  "start_url": "/citizen_app.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23dc2626'/><text x='50' y='65' font-size='40' font-weight='bold' text-anchor='middle' fill='white'>SOS</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}

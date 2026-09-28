@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="hi" class="h-full bg-slate-900 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NDRF SOS - Secure Login & Registration Portal</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-center items-center p-4">
+
+<!-- Card Container -->
+<div class="max-w-md w-full bg-slate-800 border border-slate-700 p-6 rounded-3xl shadow-2xl space-y-6">
+
+    <!-- Header Logo -->
+    <div class="text-center space-y-2">
+        <div class="inline-block bg-red-600 text-white font-black text-2xl px-4 py-1.5 rounded-xl tracking-widest shadow-lg">
+            NDRF INDIA
+        </div>
+        <h1 class="text-lg font-bold text-white">Disaster Rescue & Citizen Portal</h1>
+        <p class="text-xs text-slate-400">सुरक्षित लॉगिन एवं पंजीकरण (Private & Encrypted)</p>
+    </div>
+
+    <!-- Auth Tabs Switcher -->
+    <div class="grid grid-cols-2 gap-2 bg-slate-900 p-1.5 rounded-2xl border border-slate-700 text-xs">
+        <button id="btnTabLogin" onclick="switchAuthTab('login')" class="py-2 rounded-xl font-bold bg-sky-600 text-white transition">
+            🔑 लॉगिन (Login)
+        </button>
+        <button id="btnTabRegister" onclick="switchAuthTab('register')" class="py-2 rounded-xl font-bold text-slate-400 hover:text-white transition">
+            📝 नया पंजीकरण (Register)
+        </button>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <form id="formLogin" onsubmit="handleLogin(event)" class="space-y-4">
+        <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">मोबाइल नंबर (Mobile Number):</label>
+            <input type="tel" id="loginPhone" required placeholder="उदा: 9876543210" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-3 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none">
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">पासवर्ड (Password):</label>
+            <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-3 text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none">
+        </div>
+
+        <button type="submit" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-3.5 rounded-2xl text-xs shadow-lg transition">
+            लॉगिन करें (Secure Login)
+        </button>
+    </form>
+
+    <!-- REGISTER FORM -->
+    <form id="formRegister" onsubmit="handleRegister(event)" class="hidden space-y-3">
+        <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">पूरा नाम (Full Name):</label>
+            <input type="text" id="regName" required placeholder="उदा: अमित शर्मा" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">मोबाइल नंबर (Mobile Number):</label>
+            <input type="tel" id="regPhone" required placeholder="उदा: 9876543210" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">पासवर्ड (Password):</label>
+            <input type="password" id="regPassword" required placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+            <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">ब्लड ग्रुप (Blood Group):</label>
+                <select id="regBloodGroup" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-2.5 text-xs focus:outline-none">
+                    <option value="Unknown">Unknown</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">इमरजेंसी संपर्क (Emergency Contact):</label>
+                <input type="tel" id="regEmergencyContact" placeholder="9123456789" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-2.5 text-xs focus:outline-none">
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">मेडिकल विवरण / बीमारियां (Medical Notes for Rescue Team):</label>
+            <textarea id="regMedicalNotes" rows="2" placeholder="उदा: शुगर/डायबिटीज मरीज, बुजुर्ग माता-पिता साथ हैं..." class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-2 text-xs focus:outline-none"></textarea>
+        </div>
+
+        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-2xl text-xs shadow-lg transition">
+            पंजीकरण करें (Create Account)
+        </button>
+    </form>
+
+    <!-- Error / Success Alert Box -->
+    <div id="alertBox" class="hidden p-3 rounded-xl text-xs font-bold text-center"></div>
+
+    <!-- Quick Demo Accounts -->
+    <div class="border-t border-slate-700 pt-4 space-y-2">
+        <p class="text-[11px] text-slate-400 text-center font-bold">⚡ Quick Test Demo Accounts:</p>
+        <div class="grid grid-cols-2 gap-2">
+            <button onclick="fillDemo('9876543210', 'citizen123')" class="bg-slate-900 hover:bg-slate-700 border border-slate-700 p-2 rounded-xl text-left">
+                <span class="text-xs font-bold text-emerald-400 block">👤 Demo Citizen</span>
+                <span class="text-[10px] text-slate-400">Mob: 9876543210</span>
+            </button>
+            <button onclick="fillDemo('9999999999', 'admin123')" class="bg-slate-900 hover:bg-slate-700 border border-slate-700 p-2 rounded-xl text-left">
+                <span class="text-xs font-bold text-red-400 block">🛡️ NDRF Admin</span>
+                <span class="text-[10px] text-slate-400">Mob: 9999999999</span>
+            </button>
+        </div>
+    </div>
+
+</div>
+
+<script src="/js/auth.js"></script>
+<script>
+function switchAuthTab(tab) {
+    const btnLogin = document.getElementById('btnTabLogin');
+    const btnReg = document.getElementById('btnTabRegister');
+    const formLogin = document.getElementById('formLogin');
+    const formReg = document.getElementById('formRegister');
+
+    if (tab === 'login') {
+        btnLogin.className = "py-2 rounded-xl font-bold bg-sky-600 text-white transition";
+        btnReg.className = "py-2 rounded-xl font-bold text-slate-400 hover:text-white transition";
+        formLogin.classList.remove('hidden');
+        formReg.classList.add('hidden');
+    } else {
+        btnReg.className = "py-2 rounded-xl font-bold bg-emerald-600 text-white transition";
+        btnLogin.className = "py-2 rounded-xl font-bold text-slate-400 hover:text-white transition";
+        formReg.classList.remove('hidden');
+        formLogin.classList.add('hidden');
+    }
+}
+
+function fillDemo(phone, pass) {
+    switchAuthTab('login');
+    document.getElementById('loginPhone').value = phone;
+    document.getElementById('loginPassword').value = pass;
+}
+
+function showAlert(msg, isSuccess = false) {
+    const box = document.getElementById('alertBox');
+    box.classList.remove('hidden', 'bg-red-950', 'text-red-400', 'bg-emerald-950', 'text-emerald-400');
+    if (isSuccess) {
+        box.classList.add('bg-emerald-950', 'text-emerald-400', 'border', 'border-emerald-800');
+    } else {
+        box.classList.add('bg-red-950', 'text-red-400', 'border', 'border-red-800');
+    }
+    box.innerText = msg;
+}
+
+function handleLogin(e) {
+    e.preventDefault();
+    const phone = document.getElementById('loginPhone').value;
+    const password = document.getElementById('loginPassword').value;
+
+    fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, password })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            Auth.setToken(data.token);
+            Auth.setUser(data.user);
+            showAlert("✅ Login Successful! Redirecting...", true);
+            setTimeout(() => {
+                if (data.user.role === 'ADMIN') {
+                    window.location.href = '/command_center.html';
+                } else {
+                    window.location.href = '/citizen_app.html';
+                }
+            }, 800);
+        } else {
+            showAlert("❌ " + data.error);
+        }
+    })
+    .catch(err => showAlert("❌ Server error: " + err.message));
+}
+
+function handleRegister(e) {
+    e.preventDefault();
+    const name = document.getElementById('regName').value;
+    const phone = document.getElementById('regPhone').value;
+    const password = document.getElementById('regPassword').value;
+    const bloodGroup = document.getElementById('regBloodGroup').value;
+    const emergencyContact = document.getElementById('regEmergencyContact').value;
+    const medicalNotes = document.getElementById('regMedicalNotes').value;
+
+    fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, phone, password, bloodGroup, emergencyContact, medicalNotes })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            Auth.setToken(data.token);
+            Auth.setUser(data.user);
+            showAlert("✅ Registration Successful! Redirecting...", true);
+            setTimeout(() => { window.location.href = '/citizen_app.html'; }, 800);
+        } else {
+            showAlert("❌ " + data.error);
+        }
+    })
+    .catch(err => showAlert("❌ Server error: " + err.message));
+}
+</script>
+
+</body>
+</html>

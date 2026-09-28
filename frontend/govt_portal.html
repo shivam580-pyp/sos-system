@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="hi" class="h-full bg-slate-900 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Govt SDMA Disaster Report & Analytics Portal</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="flex flex-col min-h-screen bg-slate-900 text-slate-100 font-sans">
+
+<!-- Top Navigation Header -->
+<header class="bg-slate-800 border-b border-slate-700 px-4 py-3 flex flex-wrap justify-between items-center sticky top-0 z-50 shadow-md">
+    <div class="flex items-center space-x-3">
+        <div class="bg-amber-600 text-white font-black px-3 py-1 rounded text-xl tracking-wider">SDMA</div>
+        <div>
+            <h1 class="text-lg font-bold leading-tight">State Disaster Management Authority (SDMA) Report Portal</h1>
+            <p class="text-xs text-slate-400">Official Executive Analytics & Incident Data Export</p>
+        </div>
+    </div>
+
+    <!-- Navigation Buttons & User Badge -->
+    <div class="flex items-center space-x-2 mt-2 sm:mt-0">
+        <div id="userAuthBadge"></div>
+        <a href="/citizen_app.html" class="px-3 py-1.5 rounded text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-300">
+            📱 Citizen SOS App
+        </a>
+        <a href="/command_center.html" class="px-3 py-1.5 rounded text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-300">
+            🚤 Command Center
+        </a>
+        <a href="/govt_portal.html" class="px-3 py-1.5 rounded text-xs font-semibold bg-sky-600 text-white">
+            🏛️ Govt Report Panel
+        </a>
+    </div>
+</header>
+
+<!-- Main Body -->
+<main class="flex-1 p-4 max-w-7xl mx-auto w-full space-y-6">
+
+    <!-- Executive Summary Banner -->
+    <div class="bg-gradient-to-r from-slate-800 via-slate-800 to-slate-900 border border-slate-700 p-6 rounded-2xl shadow-xl space-y-4">
+        <div class="flex flex-wrap justify-between items-center gap-4">
+            <div>
+                <h2 class="text-xl font-bold text-white">🏛️ Executive Disaster Incident Summary</h2>
+                <p class="text-xs text-slate-400">Real-time aggregate data for Ministry of Home Affairs & State Relief Commissioners</p>
+            </div>
+            <div class="flex space-x-3">
+                <button onclick="exportReportCSV()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 shadow">
+                    <span>📊 Export CSV Report</span>
+                </button>
+                <button onclick="exportReportJSON()" class="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 shadow">
+                    <span>📁 Export JSON Dataset</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Metrics Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+            <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center">
+                <div class="text-xs text-slate-400">Total Logged Incidents</div>
+                <div id="govtTotalSOS" class="text-3xl font-black text-white mt-1">0</div>
+            </div>
+            <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center">
+                <div class="text-xs text-slate-400">Pending Evacuation</div>
+                <div id="govtPendingSOS" class="text-3xl font-black text-amber-400 mt-1">0</div>
+            </div>
+            <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center">
+                <div class="text-xs text-slate-400">Dispatched Rescue Boats</div>
+                <div id="govtDispatchedSOS" class="text-3xl font-black text-emerald-400 mt-1">0</div>
+            </div>
+            <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center">
+                <div class="text-xs text-slate-400">Critical Medical Cases</div>
+                <div id="govtCriticalMedical" class="text-3xl font-black text-red-500 mt-1">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional State Relief Details -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-3">
+            <h3 class="text-sm font-bold text-sky-400">🌊 River Barrage & Flood Relief Camp Status</h3>
+            <ul class="space-y-2 text-xs text-slate-300">
+                <li class="flex justify-between border-b border-slate-700 pb-1.5">
+                    <span>Kosi Barrage Discharge:</span>
+                    <span class="font-mono text-amber-400 font-bold">4.2 Lakh Cusec (High Warning)</span>
+                </li>
+                <li class="flex justify-between border-b border-slate-700 pb-1.5">
+                    <span>Brahmaputra Water Level:</span>
+                    <span class="font-mono text-red-400 font-bold">1.8m Above Danger Mark</span>
+                </li>
+                <li class="flex justify-between">
+                    <span>Active Relief Camps Operating:</span>
+                    <span class="font-mono text-emerald-400 font-bold">142 Camps (Pan-Sector)</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-3">
+            <h3 class="text-sm font-bold text-emerald-400">🛰️ Disaster Data Interoperability</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+                This report panel syncs with NDMA, SDMA, and NDRF central telemetry. All data logged via BLE offline mesh nodes is automatically decoded and synced when relay nodes re-establish connectivity.
+            </p>
+        </div>
+    </div>
+
+</main>
+
+<!-- JS Scripts -->
+<script src="/js/auth.js"></script>
+<script src="/js/govt_portal.js"></script>
+
+</body>
+</html>

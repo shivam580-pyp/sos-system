@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="hi" class="h-full bg-slate-900 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NDRF Disaster Rescue Command Center & GIS Dashboard</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="flex flex-col min-h-screen bg-slate-900 text-slate-100 font-sans">
+
+<!-- Top Navigation Header -->
+<header class="bg-slate-800 border-b border-slate-700 px-4 py-3 flex flex-wrap justify-between items-center sticky top-0 z-50 shadow-md">
+    <div class="flex items-center space-x-3">
+        <div class="bg-red-600 text-white font-black px-3 py-1 rounded text-xl tracking-wider">NDRF</div>
+        <div>
+            <h1 class="text-lg font-bold leading-tight">Tactical Command Center & GIS Map</h1>
+            <p class="text-xs text-slate-400">Bihar, Assam & Pan-India Sector Operations</p>
+        </div>
+    </div>
+
+    <!-- Navigation Buttons & User Badge -->
+    <div class="flex items-center space-x-2 mt-2 sm:mt-0">
+        <div id="userAuthBadge"></div>
+        <a href="/citizen_app.html" class="px-3 py-1.5 rounded text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-300">
+            📱 Citizen SOS App
+        </a>
+        <a href="/command_center.html" class="px-3 py-1.5 rounded text-xs font-semibold bg-sky-600 text-white">
+            🚤 Command Center
+        </a>
+        <a href="/govt_portal.html" class="px-3 py-1.5 rounded text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-300">
+            🏛️ Govt Report Panel
+        </a>
+    </div>
+</header>
+
+<!-- Main Dynamic Body Container -->
+<main class="flex-1 p-4 max-w-7xl mx-auto w-full space-y-4">
+
+    <!-- Command Metrics Bar -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-slate-800 p-3 rounded-lg border border-slate-700">
+            <div class="text-xs text-slate-400">Total SOS Signals</div>
+            <div id="statTotalSOS" class="text-2xl font-bold text-white">0</div>
+        </div>
+        <div class="bg-slate-800 p-3 rounded-lg border border-slate-700">
+            <div class="text-xs text-slate-400">Critical Medical</div>
+            <div id="statCritical" class="text-2xl font-bold text-red-500">0</div>
+        </div>
+        <div class="bg-slate-800 p-3 rounded-lg border border-slate-700">
+            <div class="text-xs text-slate-400">Dispatched Rescue Boats</div>
+            <div id="statDispatched" class="text-2xl font-bold text-emerald-400">0</div>
+        </div>
+        <div class="bg-slate-800 p-3 rounded-lg border border-slate-700">
+            <div class="text-xs text-slate-400">Mesh Network Node</div>
+            <div class="text-2xl font-bold text-amber-400">BLE P2P</div>
+        </div>
+    </div>
+
+    <!-- GIS Map & Incident Queue Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <!-- GIS Tactical Map -->
+        <div class="lg:col-span-2 bg-slate-800 p-3 rounded-xl border border-slate-700">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-sm font-bold flex items-center gap-2">
+                    <span>🗺️ Tactical GIS Map</span>
+                    <span class="text-[10px] bg-sky-900/60 text-sky-300 border border-sky-700 px-2 py-0.5 rounded">Live Leaflet Overlay</span>
+                </h2>
+                <button onclick="simulateIncomingMesh()" class="text-xs bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1 rounded font-semibold">
+                    ⚡ Simulate Incoming BLE Packet
+                </button>
+            </div>
+            <div id="commandMap"></div>
+        </div>
+
+        <!-- Triage SOS Incident Queue -->
+        <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-col h-[490px]">
+            <h2 class="text-sm font-bold mb-2">🚨 Live SOS Queue & Dispatch</h2>
+            <div id="incidentList" class="flex-1 overflow-y-auto space-y-2 pr-1">
+                <p class="text-xs text-slate-500 text-center py-8">Loading SOS packets...</p>
+            </div>
+        </div>
+
+        <!-- NDRF Teams & Equipment Monitor -->
+        <div class="lg:col-span-3 bg-slate-800 p-3 rounded-xl border border-slate-700">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-sm font-bold">🚑 NDRF Teams & Equipment Availability</h2>
+                <span class="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded">Active Readiness</span>
+            </div>
+            <div id="teamAvailabilityList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3"></div>
+        </div>
+    </div>
+
+</main>
+
+<!-- JS Scripts -->
+<script src="/js/auth.js"></script>
+<script src="/js/mesh_network.js"></script>
+<script src="/js/command_center.js"></script>
+
+</body>
+</html>

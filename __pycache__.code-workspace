@@ -1,0 +1,22 @@
+{
+	"folders": [
+		{
+			"path": "../projects/disaster management system/disaster menegament files/__pycache__"
+		},
+		{
+			"path": "../projects/disaster management system/disaster menegament files/backend"
+		},
+		{
+			"path": "../projects/disaster management system/disaster menegament files/mobile_mesh_emulator"
+		},
+		{
+			"path": "../projects/disaster management system/disaster menegament files/ndrf_dashboard"
+		},
+		{
+			"path": "../projects/disaster management system/disaster menegament files/node_modules"
+		},
+		{
+			"path": "../projects/disaster management system/disaster menegament files/sensor_emulator"
+		}
+	]
+}

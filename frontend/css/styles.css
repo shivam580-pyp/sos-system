@@ -1,0 +1,48 @@
+/* NDRF Emergency Mobile & Command Center Stylesheet */
+
+body {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Strobe Beacon Flash Animation for Night Signal */
+.strobe-mode, .strobe-active {
+    animation: strobeAnimation 0.12s infinite alternate !important;
+}
+
+@keyframes strobeAnimation {
+    0% { background-color: #ffffff !important; color: #000000 !important; }
+    100% { background-color: #dc2626 !important; color: #ffffff !important; }
+}
+
+/* Leaflet GIS Map Styling */
+#mobileMap, #commandMap {
+    height: 420px;
+    width: 100%;
+    border-radius: 1rem;
+    z-index: 1;
+    background-color: #1e293b;
+}
+
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+    background: #1e293b !important;
+    color: #f8fafc !important;
+    border: 1px solid #475569;
+    border-radius: 0.75rem;
+}
+
+/* Custom Scrollbar for Logs & Incident Lists */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+}

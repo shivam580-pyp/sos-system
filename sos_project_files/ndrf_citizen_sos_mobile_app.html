@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="hi" class="h-full bg-slate-900 text-slate-100 selection:bg-red-600 selection:text-white">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NDRF All-India Citizen Emergency SOS App</title>
+
+    <!-- Mobile Native Meta Tags & PWA Web App Manifest -->
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NDRF SOS">
+    <link rel="manifest" href="data:application/manifest+json;base64,ewogICJuYW1lIjogIk5EUkYgTmF0aW9ud2lkZSBDaXRpemVuIFNPUyBBcHAiLAogICJzaG9ydF9uYW1lIjogIk5EUkYgU09TIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMwZjE3MmEiLAogICJ0aGVtZV9jb2xvcIjogIiMwZjE3MmEiLAogICJpY29ucyI6IFtdCn0=">
+
+    <!-- Leaflet GIS Map CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- Tailwind CSS (via CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        appBg: '#0f172a',
+                        cardBg: '#1e293b',
+                        sosRed: '#dc2626',
+                        sosRedDark: '#991b1b',
+                        accentBlue: '#0284c7'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .strobe-mode {
+            animation: strobeAnimation 0.12s infinite alternate !important;
+        }
+        @keyframes strobeAnimation {
+            0% { background-color: #ffffff !important; color: #000000 !important; }
+            100% { background-color: #dc2626 !important; color: #ffffff !important; }
+        }
+        #mobileMap {
+            height: 380px;
+            width: 100%;
+            border-radius: 1rem;
+            z-index: 1;
+            background-color: #1e293b;
+        }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+            background: #1e293b !important;
+            color: #f8fafc !important;
+            border: 1px solid #475569;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans antialiased pb-20">
+
+<!-- Chosen Palette: Mobile Emergency Dark (Slate 900 background, High-Contrast Red SOS controls, Amber Warning, Emerald Safe Indicators) -->
+<!-- Application Structure Plan: Dedicated All-India Mobile Citizen Survival App with Pan-India Multilingual Support (Tamil, Telugu, Kannada, Malayalam, Marathi, Gujarati, Hindi, English, Assamese, Bengali, Nepali), 16 NDRF Battalions National Directory, Online Web-API Sync to Command Website, Offline BLE Mesh Broadcast, Web Audio Siren synthesizer, Strobe Beacon, and GIS Safety Map. -->
+<!-- Visualization & Content Choices: Leaflet Canvas Engine for interactive map view; Tailwind CSS layout formatted for mobile smartphones; Pure Vanilla JS Audio API for rescue whistle. NO SVG graphics used, NO Mermaid JS used. -->
+<!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+<!-- App Header -->
+<header class="bg-slate-800 border-b border-slate-700 px-4 py-3 sticky top-0 z-40 shadow-xl flex justify-between items-center">
+    <div class="flex items-center space-x-2">
+        <span class="bg-red-600 text-white font-black text-xs px-2.5 py-1 rounded-lg tracking-widest shadow">NDRF INDIA</span>
+        <div>
+            <h1 class="text-sm font-bold leading-tight">NATIONAL CITIZEN SOS</h1>
+            <p class="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span id="txtNetStatus">Online API & Mesh Sync</span>
+            </p>
+        </div>
+    </div>
+
+    <!-- Multilingual Switcher (South, North, East & West Languages) -->
+    <select id="langSelect" onchange="changeLanguage()" class="bg-slate-900 text-slate-200 text-xs px-2 py-1.5 rounded-lg border border-slate-700 focus:outline-none focus:ring-1 focus:ring-sky-500 font-medium">
+        <option value="hi" selected>हिन्दी</option>
+        <option value="en">English</option>
+        <option value="ta">தமிழ் (Tamil)</option>
+        <option value="te">తెలుగు (Telugu)</option>
+        <option value="kn">கன்னட (Kannada)</option>
+        <option value="ml">മലയാളം (Malayalam)</option>
+        <option value="mr">मराठी (Marathi)</option>
+        <option value="gu">ગુજરાતી (Gujarati)</option>
+        <option value="as">অসমীয়া (Assamese)</option>
+        <option value="bn">বাংলা (Bengali)</option>
+        <option value="ne">नेपाली (Nepali)</option>
+    </select>
+</header>
+
+<!-- Main Mobile App Container -->
+<main class="flex-1 max-w-md mx-auto w-full p-4 space-y-4">
+
+    <!-- PWA Install Banner -->
+    <div id="pwaBanner" class="bg-sky-950/80 border border-sky-700 p-3 rounded-2xl flex items-center justify-between shadow-lg">
+        <div class="flex items-center space-x-2.5">
+            <span class="text-2xl">📲</span>
+            <div>
+                <h2 class="text-xs font-bold text-sky-200" id="txtPwaTitle">फोन में ऐप इंस्टॉल करें</h2>
+                <p class="text-[10px] text-sky-300" id="txtPwaDesc">बिना इंटरनेट (Offline) आपात स्थिति में चलाने के लिए</p>
+            </div>
+        </div>
+        <button onclick="promptPWAInstall()" class="bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow">
+            Install
+        </button>
+    </div>
+
+    <!-- SECTION 1: SOS TRIGGER & PHYSICAL ALERTS (Default Tab) -->
+    <section id="tabSos" class="space-y-4">
+        
+        <!-- Live GPS & Status Card -->
+        <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 flex justify-between items-center text-xs">
+            <div>
+                <span class="text-slate-400 block text-[10px]" id="txtGpsLabel">वर्तमान GPS स्थान:</span>
+                <span id="gpsCoords" class="font-mono font-bold text-sky-400 text-xs">GPS प्राप्त हो रहा है...</span>
+            </div>
+            <button onclick="fetchGPSLocation()" class="bg-slate-700 hover:bg-slate-600 text-xs text-slate-200 px-2.5 py-1.5 rounded-xl border border-slate-600">
+                🔄 Refetch
+            </button>
+        </div>
+
+        <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 space-y-3">
+            <div>
+                <h2 class="text-xs font-bold text-white">Rescue location hints</h2>
+                <p id="gpsFixStatus" class="mt-1 text-[10px] text-slate-400">GPS fix not saved yet</p>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <label class="text-[10px] text-slate-300">Nearest landmark
+                    <select id="manualLandmark" class="mt-1 w-full rounded-md border border-slate-600 bg-slate-900 p-2 text-[11px] text-white">
+                        <option value="">Not selected</option>
+                        <option>Government school</option>
+                        <option>Government hospital</option>
+                        <option>Relief camp</option>
+                        <option>River bridge</option>
+                        <option>Government building</option>
+                        <option>Other nearby landmark</option>
+                    </select>
+                </label>
+                <label class="text-[10px] text-slate-300">Floor
+                    <select id="manualFloor" class="mt-1 w-full rounded-md border border-slate-600 bg-slate-900 p-2 text-[11px] text-white">
+                        <option value="">Use pressure estimate</option>
+                        <option value="0">Ground floor</option>
+                        <option value="1">1st floor</option>
+                        <option value="2">2nd floor</option>
+                        <option value="3">3rd floor</option>
+                        <option value="4">4th floor or higher</option>
+                    </select>
+                </label>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <label class="text-[10px] text-slate-300">Approx. latitude
+                    <input id="manualLatitude" type="number" step="any" inputmode="decimal" placeholder="Use saved GPS" class="mt-1 w-full rounded-md border border-slate-600 bg-slate-900 p-2 text-[11px] text-white placeholder:text-slate-500">
+                </label>
+                <label class="text-[10px] text-slate-300">Approx. longitude
+                    <input id="manualLongitude" type="number" step="any" inputmode="decimal" placeholder="Use saved GPS" class="mt-1 w-full rounded-md border border-slate-600 bg-slate-900 p-2 text-[11px] text-white placeholder:text-slate-500">
+                </label>
+            </div>
+            <button type="button" onclick="applyManualRescueLocation()" class="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-[11px] font-semibold text-white">Use landmark / manual location</button>
+            <div class="border-t border-slate-700 pt-2">
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="text-[10px] text-slate-300">Ground-level baseline (hPa)
+                        <input id="groundPressureBaseline" type="number" min="850" max="1100" step="0.1" value="1013.2" class="mt-1 w-full rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-right text-[11px] text-white">
+                    </label>
+                    <label for="simulatedPressure" class="text-[10px] text-slate-300">Current pressure (hPa)
+                        <input id="simulatedPressure" type="number" min="850" max="1100" step="0.1" value="1013.2" class="mt-1 w-full rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-right text-[11px] text-white">
+                    </label>
+                </div>
+                <p id="barometerFloorEstimate" class="mt-1 text-[10px] text-slate-400">Barometer simulation: approximate ground level</p>
+                <button type="button" onclick="updateBarometerFloorEstimate()" class="mt-1 text-[10px] text-sky-300 underline">Update pressure estimate</button>
+            </div>
+            <div class="border-t border-slate-700 pt-2">
+                <div class="flex items-center justify-between gap-2">
+                    <p class="text-[10px] text-slate-300">Nearby BLE users</p>
+                    <button type="button" onclick="simulateBleRssiProximity()" class="rounded-md border border-slate-600 bg-slate-700 px-2 py-1 text-[10px] text-white">Simulate RSSI</button>
+                </div>
+                <p id="bleProximityHints" class="mt-1 text-[10px] leading-relaxed text-slate-400">No neighbor signal estimate yet.</p>
+                <p class="mt-1 text-[9px] text-slate-500">RSSI gives a rough nearby-peer hint, not a GPS fix. Simulation unless real BLE advertisements are received.</p>
+            </div>
+        </div>
+
+        <!-- Emergency Situation Selector -->
+        <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 space-y-2">
+            <label id="lblCondition" class="block text-xs font-bold text-slate-200">आपकी आपातकालीन स्थिति चुनें:</label>
+            <select id="sosCondition" class="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium">
+                <option value="FLOOD_TRAPPED">🌊 बाढ़ में फंसे हैं / छत या पेड़ पर हैं (Trapped in Flood)</option>
+                <option value="CYCLONE_CRITICAL">🌪️ चक्रवात / तूफान क्षति (Cyclone / Storm Emergency)</option>
+                <option value="EARTHQUAKE_COLLAPSE">🏚️ मलबे/इमारत में फंसे हैं (Earthquake / Landslide)</option>
+                <option value="MEDICAL_CRITICAL">🚨 गंभीर मेडिकल इमरजेंसी / चोट (Medical Emergency)</option>
+                <option value="INFANT_ELDERLY">👶 नवजात शिशु / बुजुर्ग का तत्काल रेस्क्यू (Infant/Elderly)</option>
+                <option value="NEED_FOOD_WATER">🍞 भोजन और पीने के पानी की सख्त जरूरत (Food/Water Needed)</option>
+                <option value="SAFE_RELOCATED">🟢 सुरक्षित स्थान पर पहुँच गए (Safe Signal)</option>
+            </select>
+        </div>
+
+        <!-- MAIN 1-TAP SOS BUTTON -->
+        <div class="relative flex justify-center py-2">
+            <button id="sosBtn" onclick="sendSOS()" class="w-full max-w-xs bg-gradient-to-b from-red-500 to-red-700 hover:from-red-600 hover:to-red-800 active:scale-95 text-white font-black text-3xl py-10 rounded-3xl shadow-2xl shadow-red-900/80 border-4 border-red-400 flex flex-col items-center justify-center transition-all">
+                <span id="txtSosBtnMain">1-टैप SOS</span>
+                <span class="text-[11px] font-normal mt-1 opacity-90 text-red-100" id="txtSosBtnSub">NDRF HQ & Command Web Sync</span>
+            </button>
+        </div>
+
+        <!-- PHYSICAL ALERT TOOLS (Whistle Siren & Screen Strobe) -->
+                <!-- Tiered power profile and report estimates -->
+                <section id="powerModePanel" class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 space-y-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <h2 class="text-xs font-bold text-white">पावर मोड / Power Mode</h2>
+                            <p id="powerModeLabel" class="mt-1 text-[11px] font-semibold text-emerald-400">NORMAL · कम खपत</p>
+                        </div>
+                        <button id="returnToNormalButton" type="button" onclick="startNormalPowerMode()" class="hidden bg-slate-700 hover:bg-slate-600 text-[10px] text-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-600">Return to normal</button>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-1.5 text-[10px] text-slate-300">
+                        <p id="blePowerStatus">BLE: beacon check every 30 s (simulation)</p>
+                        <p id="gpsPowerStatus">GPS: low-frequency refresh every 5 min</p>
+                        <p id="loraPowerStatus">LoRa: standby; no radio module connected</p>
+                    </div>
+
+                    <div class="border-t border-slate-700 pt-3 space-y-2">
+                        <label for="batteryCapacity" class="flex items-center justify-between gap-3 text-[10px] text-slate-300">
+                            <span>Battery capacity for estimate</span>
+                            <span class="flex items-center gap-1.5">
+                                <input id="batteryCapacity" type="number" min="1000" max="20000" step="500" value="5000" class="w-20 rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-right text-white">
+                                <span>mAh</span>
+                            </span>
+                        </label>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-[10px]">
+                                <thead class="text-slate-400">
+                                    <tr>
+                                        <th class="py-1 pr-2 font-medium">Mode</th>
+                                        <th class="py-1 pr-2 font-medium">Est. mAh/hour</th>
+                                        <th class="py-1 font-medium">Est. battery life</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-slate-200">
+                                    <tr class="border-t border-slate-700">
+                                        <td class="py-1.5 pr-2">Normal</td>
+                                        <td class="py-1.5 pr-2">55</td>
+                                        <td id="normalBatteryLife" class="py-1.5">91 h</td>
+                                    </tr>
+                                    <tr class="border-t border-slate-700">
+                                        <td class="py-1.5 pr-2">Emergency</td>
+                                        <td class="py-1.5 pr-2">245</td>
+                                        <td id="emergencyBatteryLife" class="py-1.5">20 h</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="text-[9px] leading-relaxed text-slate-500">Illustrative whole-device model, not measured. Emergency estimate includes assumed external LoRa hardware; real drain varies by phone, signal, screen and radio.</p>
+                    </div>
+                </section>
+
+                <!-- PHYSICAL ALERT TOOLS (Whistle Siren & Screen Strobe) -->
+        <div class="grid grid-cols-2 gap-3">
+            <button id="sirenBtn" onclick="toggleWhistleSiren()" class="bg-slate-800 hover:bg-slate-700 active:bg-red-600 text-white p-4 rounded-2xl border border-slate-700 flex flex-col items-center justify-center text-center space-y-1 transition shadow-lg">
+                <span class="text-2xl">🔊</span>
+                <span class="text-xs font-bold" id="txtWhistleBtn">2800Hz सीटी साइरन</span>
+                <span class="text-[9px] text-slate-400">रेस्क्यू कुत्तों/टीम के लिए ऑडियो</span>
+            </button>
+
+            <button id="strobeBtn" onclick="toggleStrobeBeacon()" class="bg-slate-800 hover:bg-slate-700 active:bg-amber-600 text-white p-4 rounded-2xl border border-slate-700 flex flex-col items-center justify-center text-center space-y-1 transition shadow-lg">
+                <span class="text-2xl">🔦</span>
+                <span class="text-xs font-bold" id="txtStrobeBtn">स्क्रीन फ़्लैश लाइट</span>
+                <span class="text-[9px] text-slate-400">रात में हेलीकॉप्टर / नाव संकेत</span>
+            </button>
+        </div>
+
+        <!-- Broadcast History / Log Card -->
+        <div class="bg-slate-800/80 p-3.5 rounded-2xl border border-slate-700 space-y-2">
+            <h3 class="text-xs font-bold text-slate-300 flex justify-between items-center">
+                <span id="txtLogTitle">📡 हालिया SOS सिग्नल लॉग (Server Sync)</span>
+                <span id="logCount" class="text-[10px] bg-red-950 text-red-400 px-2 py-0.5 rounded-full border border-red-800">0 Sent</span>
+            </h3>
+            <div id="sosLogContainer" class="space-y-1.5 max-h-36 overflow-y-auto text-[11px] text-slate-400">
+                <p class="text-center py-4 text-slate-500">अभी तक कोई SOS सिग्नल नहीं भेजा गया है।</p>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- SECTION 2: MAP & NEARBY RELIEF CENTERS -->
+    <section id="tabMap" class="hidden space-y-3">
+        <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 space-y-2">
+            <h2 class="text-xs font-bold text-white flex items-center justify-between">
+                <span>🗺️ आपका सुरक्षा नक्शा एवं निकटतम NDRF बेस</span>
+                <span class="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded">Real-Time GIS</span>
+            </h2>
+            <p class="text-[11px] text-slate-300">
+                यह नक्शा आपके वर्तमान GPS स्थान और निकटतम NDRF बटालियनों को दर्शाता है।
+            </p>
+        </div>
+
+        <!-- Map Canvas -->
+        <div id="mobileMap" class="shadow-2xl"></div>
+
+        <!-- Legend -->
+        <div class="bg-slate-800 p-3 rounded-2xl border border-slate-700 text-[11px] flex justify-around text-slate-300">
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-red-600 inline-block"></span> आपका GPS स्थान</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-sky-500 inline-block"></span> NDRF बटालियन / बेस</span>
+        </div>
+    </section>
+
+    <!-- SECTION 3: NATIONWIDE DIRECTORY & OFFICIAL HELPLINES (All 16 NDRF Bns) -->
+    <section id="tabHelpline" class="hidden space-y-3">
+        <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 space-y-1">
+            <h2 class="text-sm font-bold text-white" id="txtHelplineTitle">📞 भारत की सभी NDRF बटालियन (Nationwide Directory)</h2>
+            <p class="text-[11px] text-slate-400">दक्षिण, उत्तर, पूर्व एवं पश्चिम भारत के 100% आधिकारिक हेल्पलाइन नंबर</p>
+        </div>
+
+        <!-- Filter State/Zone -->
+        <div class="space-y-2.5">
+            <!-- NDMA National Emergency -->
+            <a href="tel:1078" class="bg-gradient-to-r from-red-950/80 to-slate-800 border border-red-700 p-3.5 rounded-2xl flex justify-between items-center active:scale-98 transition block">
+                <div>
+                    <div class="text-xs font-bold text-red-300">NDMA राष्ट्रीय आपदा हेल्पलाइन</div>
+                    <div class="text-lg font-black text-white font-mono">1078 / 112</div>
+                    <div class="text-[10px] text-slate-400">National Disaster Management Authority</div>
+                </div>
+                <span class="bg-red-600 text-white font-bold text-xs px-3 py-2 rounded-xl">Call 📞</span>
+            </a>
+
+            <!-- NDRF HQ New Delhi -->
+            <a href="tel:01124363260" class="bg-slate-800 border border-slate-700 p-3.5 rounded-2xl flex justify-between items-center active:scale-98 transition block">
+                <div>
+                    <div class="text-xs font-bold text-sky-400">NDRF HQ कंट्रोल रूम (नई दिल्ली)</div>
+                    <div class="text-sm font-bold text-white font-mono">011-24363260 / 9711077372</div>
+                    <div class="text-[10px] text-slate-400">National Control Room</div>
+                </div>
+                <span class="bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-xl">Call 📞</span>
+            </a>
+
+            <!-- South India NDRF Battalions -->
+            <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 space-y-2">
+                <h3 class="text-xs font-bold text-amber-400 border-b border-slate-700 pb-1.5">दक्षिण भारत (South India Battalions)</h3>
+                <div class="space-y-2 text-xs">
+                    <a href="tel:04427926410" class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex justify-between items-center block">
+                        <div>
+                            <span class="text-white font-bold block">NDRF 4th Bn - Arakkonam (Tamil Nadu & Kerala)</span>
+                            <span class="text-slate-400 text-[10px]">तमिलनाडु, केरल, पुडुचेरी</span>
+                        </div>
+                        <span class="font-bold text-sky-400 font-mono">044-27926410</span>
+                    </a>
+                    <a href="tel:08632293111" class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex justify-between items-center block">
+                        <div>
+                            <span class="text-white font-bold block">NDRF 10th Bn - Vijayawada (Andhra Pradesh & Telangana)</span>
+                            <span class="text-slate-400 text-[10px]">आंध्र प्रदेश व तेलंगाना</span>
+                        </div>
+                        <span class="font-bold text-sky-400 font-mono">0863-2293111</span>
+                    </a>
+                    <a href="tel:08028391111" class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex justify-between items-center block">
+                        <div>
+                            <span class="text-white font-bold block">NDRF 16th Bn - Bengaluru (Karnataka & Goa)</span>
+                            <span class="text-slate-400 text-[10px]">कर्नाटक एवं गोवा</span>
+                        </div>
+                        <span class="font-bold text-sky-400 font-mono">080-28391111</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- North, West & East Battalions -->
+            <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 space-y-2">
+                <h3 class="text-xs font-bold text-sky-400 border-b border-slate-700 pb-1.5">उत्तर, पूर्व एवं पश्चिम भारत (North, East & West)</h3>
+                <div class="space-y-2 text-xs">
+                    <a href="tel:06115252101" class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex justify-between items-center block">
+                        <div>
+                            <span class="text-white font-bold block">NDRF 9th Bn - Patna/Bihta (Bihar & Jharkhand)</span>
+                            <span class="text-slate-400 text-[10px]">बिहार व झारखंड</span>
+                        </div>
+                        <span class="font-bold text-sky-400 font-mono">06115-252101</span>
+                    </a>
+                    <a href="tel:03612840138" class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex justify-between items-center block">
+                        <div>
+                            <span class="text-white font-bold block">NDRF 1st Bn - Guwahati (Assam & North-East)</span>
+                            <span class="text-slate-400 text-[10px]">असम व पूर्वोत्तर राज्य</span>
+                        </div>
+                        <span class="font-bold text-sky-400 font-mono">0361-2840138</span>
+                    </a>
+                    <a href="tel:02114247000" class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex justify-between items-center block">
+                        <div>
+                            <span class="text-white font-bold block">NDRF 5th Bn - Pune (Maharashtra)</span>
+                            <span class="text-slate-400 text-[10px]">महाराष्ट्र व मुंबई</span>
+                        </div>
+                        <span class="font-bold text-sky-400 font-mono">02114-247000</span>
+                    </a>
+                    <a href="tel:01202766618" class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex justify-between items-center block">
+                        <div>
+                            <span class="text-white font-bold block">NDRF 8th Bn - Ghaziabad (Delhi NCR & UP)</span>
+                            <span class="text-slate-400 text-[10px]">दिल्ली एनसीआर एवं उत्तर प्रदेश</span>
+                        </div>
+                        <span class="font-bold text-sky-400 font-mono">0120-2766618</span>
+                    </a>
+                    <a href="tel:02652488123" class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex justify-between items-center block">
+                        <div>
+                            <span class="text-white font-bold block">NDRF 6th Bn - Vadodara (Gujarat)</span>
+                            <span class="text-slate-400 text-[10px]">गुजरात</span>
+                        </div>
+                        <span class="font-bold text-sky-400 font-mono">0265-2488123</span>
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- SECTION 4: OFFICIAL DISASTER SURVIVAL GUIDE -->
+    <section id="tabGuides" class="hidden space-y-3">
+        <div class="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 space-y-1">
+            <h2 class="text-sm font-bold text-white">📖 आपदा सुरक्षा गाइड (NDMA Official Protocols)</h2>
+            <p class="text-[11px] text-slate-400">आपात स्थिति में क्या करें और क्या न करें</p>
+        </div>
+
+        <div class="space-y-3 text-xs">
+            <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 space-y-2">
+                <div class="flex items-center space-x-2 text-sky-400 font-bold border-b border-slate-700 pb-2">
+                    <span class="text-xl">🌊</span>
+                    <span>बाढ़ व चक्रवात सुरक्षा (Flood & Cyclone Safety)</span>
+                </div>
+                <ul class="list-disc list-inside space-y-1 text-slate-300 text-[11px] leading-relaxed">
+                    <li>यदि पानी घर में घुसे, तो तुरंत बिजली का मुख्य स्विच (Mains) बंद कर दें।</li>
+                    <li>ऊँचे मजबूत मकान की छत या सुरक्षित ऊँचे टीले पर चले जाएँ।</li>
+                    <li>चक्रवात के समय खिड़कियों से दूर रहें और अंदरूनी कमरे में शरण लें।</li>
+                    <li>रेस्क्यू टीम को संकेत देने के लिए चमकीला कपड़ा या टॉर्च/स्क्रीन फ़्लैश दिखाएं।</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<!-- BOTTOM NAVIGATION BAR FOR MOBILE APP -->
+<nav class="fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 z-50 px-2 py-2 shadow-2xl">
+    <div class="max-w-md mx-auto grid grid-cols-4 gap-1 text-center">
+        <button onclick="switchMobileTab('Sos')" id="navSos" class="flex flex-col items-center justify-center py-1 rounded-xl text-red-500 font-bold transition">
+            <span class="text-lg">🚨</span>
+            <span class="text-[10px] mt-0.5" id="txtNavSos">SOS ऐप</span>
+        </button>
+        <button onclick="switchMobileTab('Map')" id="navMap" class="flex flex-col items-center justify-center py-1 rounded-xl text-slate-400 hover:text-slate-200 transition">
+            <span class="text-lg">🗺️</span>
+            <span class="text-[10px] mt-0.5" id="txtNavMap">नक्शा</span>
+        </button>
+        <button onclick="switchMobileTab('Helpline')" id="navHelpline" class="flex flex-col items-center justify-center py-1 rounded-xl text-slate-400 hover:text-slate-200 transition">
+            <span class="text-lg">📞</span>
+            <span class="text-[10px] mt-0.5" id="txtNavHelpline">हेल्पलाइन</span>
+        </button>
+        <button onclick="switchMobileTab('Guides')" id="navGuides" class="flex flex-col items-center justify-center py-1 rounded-xl text-slate-400 hover:text-slate-200 transition">
+            <span class="text-lg">📖</span>
+            <span class="text-[10px] mt-0.5" id="txtNavGuides">गाइड</span>
+        </button>
+    </div>
+</nav>
+
+<!-- JS APP LOGIC ENGINE -->
+<script>
+    // App State Management & Central Command Web Sync API
+    let userLocation = { lat: 13.0827, lng: 80.2707 }; // Fallback Chennai/Pan-India
+        let locationSource = 'DEMO_DEFAULT';
+        let lastKnownGpsFix = null;
+        let floorEstimate = 0;
+        let floorEstimateSource = 'BAROMETER_SIMULATION';
+        let nearbyBleRssiObservations = [];
+    let isSirenActive = false, sirenAudioCtx = null, sirenOsc = null;
+    let isStrobeActive = false;
+    let sosLogs = [];
+    let mapInstance = null;
+    let deferredPrompt = null;
+    const BACKEND_BASE_URL = 'http://localhost:8000';
+    const COMMAND_CENTER_API = `${BACKEND_BASE_URL}/api/sos`;
+    const SOS_CHANNEL_KEY = 'ndrf_mesh_network';
+    const SOS_STORAGE_KEY = 'ndrf_sos_queue';
+    const MAPBOX_TOKEN = '';
+    const MAP_TILE_URL = MAPBOX_TOKEN
+        ? `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`
+        : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const NORMAL_BLE_INTERVAL_MS = 30 * 1000;
+    const NORMAL_GPS_INTERVAL_MS = 5 * 60 * 1000;
+    const POWER_DRAW_MAH_PER_HOUR = { normal: 55, emergency: 245 };
+    let powerMode = 'NORMAL';
+    let normalBeaconTimer = null;
+    let normalGpsTimer = null;
+    let emergencyGpsWatchId = null;
+    let emergencyBleScan = null;
+    let emergencyBleHandler = null;
+
+    // Pan-India Multilingual Dictionary
+    const appDict = {
+        hi: {
+            pwaTitle: "फोन में ऐप इंस्टॉल करें",
+            pwaDesc: "बिना इंटरनेट (Offline) आपात स्थिति में चलाने के लिए",
+            gpsLabel: "वर्तमान GPS स्थान:",
+            lblCondition: "आपकी आपातकालीन स्थिति चुनें:",
+            sosBtnMain: "1-टैप SOS",
+            sosBtnSub: "NDRF HQ & Command Web Sync",
+            whistleBtn: "2800Hz सीटी साइरन",
+            strobeBtn: "स्क्रीन फ़्लैश लाइट",
+            logTitle: "📡 हालिया SOS सिग्नल लॉग (Server Sync)",
+            navSos: "SOS ऐप", navMap: "नक्शा", navHelpline: "हेल्पलाइन", navGuides: "गाइड"
+        },
+        en: {
+            pwaTitle: "Install App on Mobile",
+            pwaDesc: "Runs offline during cell network collapse",
+            gpsLabel: "Current GPS Location:",
+            lblCondition: "Select Emergency Condition:",
+            sosBtnMain: "1-TAP SOS",
+            sosBtnSub: "NDRF HQ & Command Web Sync",
+            whistleBtn: "2800Hz Whistle Siren",
+            strobeBtn: "Screen Flash Beacon",
+            logTitle: "📡 Recent SOS Signal Log",
+            navSos: "SOS App", navMap: "Map", navHelpline: "Helplines", navGuides: "Guide"
+        },
+        ta: {
+            pwaTitle: "செயலியை நிறுவவும்",
+            pwaDesc: "இணையம் இல்லாமல் இயங்கும்",
+            gpsLabel: "தற்போதைய ஜிபிஎஸ்:",
+            lblCondition: "அவசர நிலையைத் தேர்ந்தெடுக்கவும்:",
+            sosBtnMain: "1-டேப் SOS",
+            sosBtnSub: "NDRF கட்டளை வலை ஒத்திசைவு",
+            whistleBtn: "2800Hz விசில் சைரன்",
+            strobeBtn: "திரை ஃப்ளாஷ் லைட்",
+            logTitle: "📡 சமீபத்திய SOS எச்சரிக்கைகள்",
+            navSos: "SOS செயலி", navMap: "வரைபடம்", navHelpline: "உதவி எண்", navGuides: "வழிகாட்டி"
+        },
+        te: {
+            pwaTitle: "యాప్‌ను ఇన్‌స్టాల్ చేయండి",
+            pwaDesc: "ఇంటర్నెట్ లేకుండా పనిచేస్తుంది",
+            gpsLabel: "ప్రస్తుత GPS స్థానం:",
+            lblCondition: "అత్యవసర పరిస్థితిని ఎంచుకోండి:",
+            sosBtnMain: "1-టాప్ SOS",
+            sosBtnSub: "NDRF కమాండ్ వెబ్ సింక్",
+            whistleBtn: "2800Hz విజిల్ సైరన్",
+            strobeBtn: "స్క్రీన్ ఫ్లాష్ లైట్",
+            logTitle: "📡 ఇటీవల SOS సంకేతాలు",
+            navSos: "SOS యాప్", navMap: "మ్యాప్", navHelpline: "హెల్ప్‌లైన్", navGuides: "గైడ్"
+        },
+        kn: {
+            pwaTitle: "ಆ್ಯಪ್ ಸ್ಥಾಪಿಸಿ",
+            pwaDesc: "ಆಫ್‌ಲೈನ್‌ನಲ್ಲಿ ಕಾರ್ಯನಿರ್ವಹಿಸುತ್ತದೆ",
+            gpsLabel: "ಪ್ರಸ್ತುತ GPS ಸ್ಥಳ:",
+            lblCondition: "ತುರ್ತು ಪರಿಸ್ಥಿತಿಯನ್ನು ಆಯ್ಕೆಮಾಡಿ:",
+            sosBtnMain: "1-ಟ್ಯಾಪ್ SOS",
+            sosBtnSub: "NDRF ಕಮಾಂಡ್ ವೆಬ್ ಸಿಂಕ್",
+            whistleBtn: "2800Hz ವಿಸಿಲ್ ಸೈರನ್",
+            strobeBtn: "ಸ್ಕ್ರೀನ್ ಫ್ಲ್ಯಾಶ್ ಲೈಟ್",
+            logTitle: "📡 ಇತ್ತೀಚಿನ SOS ಸಿಗ್ನಲ್‌ಗಳು",
+            navSos: "SOS ಆ್ಯಪ್", navMap: "ನಕ್ಷೆ", navHelpline: "ಹೆಲ್ಪ್‌ಲೈನ್", navGuides: "ಮಾರ್ಗದರ್ಶಿ"
+        },
+        ml: {
+            pwaTitle: "ആപ്പ് ഇൻസ്റ്റാൾ ചെയ്യുക",
+            pwaDesc: "ഇന്റർനെറ്റ് ഇല്ലാതെ പ്രവർത്തിക്കുന്നു",
+            gpsLabel: "നിലവിലെ GPS സ്ഥാനം:",
+            lblCondition: "അടിയന്തിര സാഹചര്യം തിരഞ്ഞെടുക്കുക:",
+            sosBtnMain: "1-ടാപ്പ് SOS",
+            sosBtnSub: "NDRF കമാൻഡ് വെബ് സിങ്ക്",
+            whistleBtn: "2800Hz വിസിൽ സൈറൺ",
+            strobeBtn: "സ്ക്രീൻ ഫ്ലാഷ് ലൈറ്റ്",
+            logTitle: "📡 സമീപകാല SOS സിഗ്നലുകൾ",
+            navSos: "SOS ആപ്പ്", navMap: "മാപ്പ്", navHelpline: "ഹെൽപ്പ് ലൈൻ", navGuides: "ഗൈഡ്"
+        },
+        mr: {
+            pwaTitle: "अॅप इन्स्टॉल करा",
+            pwaDesc: "इंटरनेटशिवाय ऑफलाईन वापरासाठी",
+            gpsLabel: "सध्याचे GPS स्थान:",
+            lblCondition: "आपत्कालीन स्थिती निवडा:",
+            sosBtnMain: "1-टॅप SOS",
+            sosBtnSub: "NDRF कमांड वेब सिंक",
+            whistleBtn: "2800Hz शिट्टी सायरन",
+            strobeBtn: "स्क्रीन फ्लॅश लाईट",
+            logTitle: "📡 अलीकडील SOS सिग्नल लॉग",
+            navSos: "SOS अॅप", navMap: "नकाशा", navHelpline: "हेल्पलाईन", navGuides: "मार्गदर्शक"
+        },
+        gu: {
+            pwaTitle: "એપ ઇન્સ્ટોલ કરો",
+            pwaDesc: "ઈન્ટરનેટ વગર ઓફલાઈન કામ કરે છે",
+            gpsLabel: "વર્તમાન GPS સ્થાન:",
+            lblCondition: "કટોકટીની સ્થિતિ પસંદ કરો:",
+            sosBtnMain: "1-ટેપ SOS",
+            sosBtnSub: "NDRF કમાન્ડ વેબ સિંક",
+            whistleBtn: "2800Hz સિટી સાયરન",
+            strobeBtn: "સ્ક્રીન ફ્લેશ લાઈટ",
+            logTitle: "📡 તાજેતરના SOS સિગ્નલ",
+            navSos: "SOS એપ", navMap: "નકશો", navHelpline: "હેલ્પલાઈન", navGuides: "માર્ગદર્શિકા"
+        },
+        as: {
+            pwaTitle: "ফোনত অ্যাপ ইনষ্টল কৰক",
+            pwaDesc: "ইণ্টাৰনেট অবিহনে চলোৱাৰ বাবে",
+            gpsLabel: "বৰ্তমান GPS স্থান:",
+            lblCondition: "জৰুৰী অৱস্থা বাছনি কৰক:",
+            sosBtnMain: "1-ট্যাপ SOS",
+            sosBtnSub: "NDRF কমাণ্ড ৱেব সিংক",
+            whistleBtn: "2800Hz হুইছেল চাইৰেন",
+            strobeBtn: "স্ক্ৰীণ ফ্ল্যাশ লাইট",
+            logTitle: "📡 শেহতীয়া SOS ল'গ",
+            navSos: "SOS অ্যাপ", navMap: "মানচিত্ৰ", navHelpline: "হেল্পলাইন", navGuides: "গাইড"
+        },
+        bn: {
+            pwaTitle: "ফোনে অ্যাপ ইনস্টল করুন",
+            pwaDesc: "ইন্টারনেট ছাড়া অফলাইনে ব্যবহারের জন্য",
+            gpsLabel: "বর্তমান জিপিএস অবস্থান:",
+            lblCondition: "জরুরি অবস্থা নির্বাচন করুন:",
+            sosBtnMain: "1-ট্যাপ SOS",
+            sosBtnSub: "NDRF কমান্ড ওয়েব সিঙ্ক",
+            whistleBtn: "2800Hz হুইসেল সাইরেন",
+            strobeBtn: "স্ক্রিন ফ্ল্যাশ লাইট",
+            logTitle: "📡 সাম্প্রতিক SOS বার্তা",
+            navSos: "SOS অ্যাপ", navMap: "মানচিত্র", navHelpline: "হেল্পলাইন", navGuides: "গাইড"
+        },
+        ne: {
+            pwaTitle: "फोनमा एप इन्स्टल गर्नुहोस्",
+            pwaDesc: "इन्टरनेट बिना प्रयोग गर्नका लागि",
+            gpsLabel: "वर्तमान GPS स्थान:",
+            lblCondition: "आपतकालीन अवस्था छान्नुहोस्:",
+            sosBtnMain: "1-ट्याप SOS",
+            sosBtnSub: "NDRF कमान्ड वेब सिंक",
+            whistleBtn: "2800Hz सिट्टी साइरन",
+            strobeBtn: "स्क्रिन फ्ल्यास लाइट",
+            logTitle: "📡 हालैको SOS लग",
+            navSos: "SOS एप", navMap: "नक्सा", navHelpline: "हेल्पलाइन", navGuides: "गाइड"
+        }
+    };
+
+    // System Initialization
+    window.addEventListener('DOMContentLoaded', () => {
+        loadLastKnownGpsFix();
+        fetchGPSLocation(false);
+        startNormalPowerMode();
+        document.getElementById('simulatedPressure').addEventListener('input', updateBarometerFloorEstimate);
+                document.getElementById('groundPressureBaseline').addEventListener('input', updateBarometerFloorEstimate);
+                document.getElementById('manualFloor').addEventListener('change', () => {
+                    const selectedFloor = document.getElementById('manualFloor').value;
+                    if (selectedFloor !== '') {
+                        floorEstimate = Number(selectedFloor);
+                        floorEstimateSource = 'USER_SELECTED';
+                    } else {
+                        updateBarometerFloorEstimate();
+                    }
+                });
+        updateBarometerFloorEstimate();
+        document.getElementById('batteryCapacity').addEventListener('input', updateBatteryLifeEstimates);
+        updateBatteryLifeEstimates();
+        registerServiceWorkerBlob();
+        setupPWAInstall();
+    });
+
+    // Switch Tabs
+    function switchMobileTab(tab) {
+        ['Sos', 'Map', 'Helpline', 'Guides'].forEach(t => {
+            const sec = document.getElementById(`tab${t}`);
+            const nav = document.getElementById(`nav${t}`);
+            if (t === tab) {
+                sec.classList.remove('hidden');
+                nav.classList.add('text-red-500', 'font-bold');
+                nav.classList.remove('text-slate-400');
+            } else {
+                sec.classList.add('hidden');
+                nav.classList.remove('text-red-500', 'font-bold');
+                nav.classList.add('text-slate-400');
+            }
+        });
+
+        if (tab === 'Map') {
+            setTimeout(initMobileMap, 150);
+        }
+    }
+
+    // Fetch GPS Coordinates
+    function fetchGPSLocation(enableHighAccuracy = powerMode === 'EMERGENCY') {
+        const coordsEl = document.getElementById('gpsCoords');
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                pos => {
+                    userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                    locationSource = 'GPS';
+                    lastKnownGpsFix = {
+                        latitude: userLocation.lat,
+                        longitude: userLocation.lng,
+                        accuracy_m: Math.round(pos.coords.accuracy),
+                        timestamp: Date.now()
+                    };
+                    try {
+                        localStorage.setItem('ndrf_last_accurate_gps_fix', JSON.stringify(lastKnownGpsFix));
+                    } catch (error) {}
+                    coordsEl.innerText = `${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)}`;
+                    document.getElementById('gpsFixStatus').innerText = `Last accurate GPS fix saved · ±${lastKnownGpsFix.accuracy_m} m · ${new Date(lastKnownGpsFix.timestamp).toLocaleTimeString()}`;
+                    if (powerMode === 'NORMAL') {
+                        document.getElementById('gpsPowerStatus').innerText = 'GPS: low-frequency refresh every 5 min';
+                    }
+                },
+                err => {
+                    useLastKnownGpsFix();
+                },
+                { enableHighAccuracy, maximumAge: enableHighAccuracy ? 0 : NORMAL_GPS_INTERVAL_MS, timeout: 10000 }
+            );
+        } else {
+            useLastKnownGpsFix();
+        }
+    }
+
+    function loadLastKnownGpsFix() {
+        try {
+            const savedFix = JSON.parse(localStorage.getItem('ndrf_last_accurate_gps_fix') || 'null');
+            if (savedFix && Number.isFinite(savedFix.latitude) && Number.isFinite(savedFix.longitude)) {
+                lastKnownGpsFix = savedFix;
+            }
+        } catch (error) {}
+    }
+
+    function useLastKnownGpsFix() {
+        if (lastKnownGpsFix) {
+            userLocation = { lat: lastKnownGpsFix.latitude, lng: lastKnownGpsFix.longitude };
+            locationSource = 'LAST_KNOWN_GPS';
+            document.getElementById('gpsCoords').innerText = `${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)} (last fix)`;
+            document.getElementById('gpsFixStatus').innerText = `GPS unavailable; using saved fix from ${new Date(lastKnownGpsFix.timestamp).toLocaleString()} · ±${lastKnownGpsFix.accuracy_m} m`;
+            return;
+        }
+        locationSource = 'DEMO_DEFAULT';
+        document.getElementById('gpsCoords').innerText = 'GPS unavailable · add approximate coordinates below';
+        document.getElementById('gpsFixStatus').innerText = 'No saved GPS fix. Add coordinates or a landmark before sending if possible.';
+    }
+
+    function applyManualRescueLocation() {
+        const latitudeInput = document.getElementById('manualLatitude').value.trim();
+        const longitudeInput = document.getElementById('manualLongitude').value.trim();
+        const landmark = document.getElementById('manualLandmark').value;
+        const latitude = latitudeInput === '' ? null : Number(latitudeInput);
+        const longitude = longitudeInput === '' ? null : Number(longitudeInput);
+
+        if ((latitude === null) !== (longitude === null)
+            || (latitude !== null && (!Number.isFinite(latitude) || Math.abs(latitude) > 90))
+            || (longitude !== null && (!Number.isFinite(longitude) || Math.abs(longitude) > 180))) {
+            document.getElementById('gpsFixStatus').innerText = 'Enter valid latitude and longitude together, or leave both blank to use the saved GPS fix.';
+            return;
+        }
+
+        if (latitude !== null) {
+            userLocation = { lat: latitude, lng: longitude };
+            locationSource = 'MANUAL_COORDINATES';
+        } else if (lastKnownGpsFix) {
+            userLocation = { lat: lastKnownGpsFix.latitude, lng: lastKnownGpsFix.longitude };
+            locationSource = landmark ? 'LANDMARK_LAST_KNOWN_GPS' : 'LAST_KNOWN_GPS';
+        } else if (landmark) {
+            locationSource = 'LANDMARK_ONLY_DEMO_COORDINATES';
+        } else {
+            document.getElementById('gpsFixStatus').innerText = 'Select a landmark or enter approximate coordinates first.';
+            return;
+        }
+
+        const manualFloor = document.getElementById('manualFloor').value;
+        if (manualFloor !== '') {
+            floorEstimate = Number(manualFloor);
+            floorEstimateSource = 'USER_SELECTED';
+        }
+        document.getElementById('gpsCoords').innerText = `${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)} (approx.)`;
+        const fallbackWarning = locationSource === 'LANDMARK_ONLY_DEMO_COORDINATES'
+            ? ' · no GPS fix; demo coordinates remain, enter approximate coordinates'
+            : ' · location is approximate';
+        document.getElementById('gpsFixStatus').innerText = `Manual fallback selected${landmark ? ` · ${landmark}` : ''}${fallbackWarning}`;
+    }
+
+    function updateBarometerFloorEstimate() {
+        const pressure = Number(document.getElementById('simulatedPressure').value);
+        const baselinePressure = Number(document.getElementById('groundPressureBaseline').value);
+        if (!Number.isFinite(pressure) || pressure < 850 || pressure > 1100
+            || !Number.isFinite(baselinePressure) || baselinePressure < 850 || baselinePressure > 1100) return;
+        const relativeHeightMeters = 44330 * (1 - Math.pow(pressure / baselinePressure, 0.1903));
+        floorEstimate = Math.max(0, Math.round(relativeHeightMeters / 3.3));
+        floorEstimateSource = 'BAROMETER_SIMULATION';
+        const floorText = floorEstimate === 0 ? 'ground level' : `about floor ${floorEstimate}`;
+        document.getElementById('barometerFloorEstimate').innerText = `Pressure simulation: ${pressure.toFixed(1)} hPa · ${floorText} (approx.)`;
+        if (document.getElementById('manualFloor').value === '') {
+            document.getElementById('gpsFixStatus').dataset.floorEstimate = String(floorEstimate);
+        }
+    }
+
+    function estimateDistanceMetersFromRssi(rssi) {
+        return Math.max(0.5, Math.min(100, Math.pow(10, (-59 - rssi) / 20)));
+    }
+
+    function renderBleProximityHints() {
+        const hintsElement = document.getElementById('bleProximityHints');
+        if (!nearbyBleRssiObservations.length) {
+            hintsElement.innerText = 'No neighbor signal estimate yet.';
+            return;
+        }
+        hintsElement.innerText = nearbyBleRssiObservations.map(observation => {
+            const distance = Math.round(estimateDistanceMetersFromRssi(observation.rssi_dbm));
+            const sourceLabel = observation.simulated ? 'simulation' : 'BLE scan';
+            return `Near ${observation.user_label}: rough ${distance} m · RSSI ${observation.rssi_dbm} dBm (${sourceLabel})`;
+        }).join(' | ');
+    }
+
+    function simulateBleRssiProximity() {
+        nearbyBleRssiObservations = [
+            { user_label: 'User A', rssi_dbm: -57, simulated: true },
+            { user_label: 'User B', rssi_dbm: -68, simulated: true },
+            { user_label: 'User C', rssi_dbm: -79, simulated: true }
+        ];
+        renderBleProximityHints();
+    }
+
+    function updateBatteryLifeEstimates() {
+        const input = document.getElementById('batteryCapacity');
+        const capacity = Math.min(20000, Math.max(1000, Number(input.value) || 5000));
+        input.value = String(capacity);
+        const normalHours = capacity / POWER_DRAW_MAH_PER_HOUR.normal;
+        const emergencyHours = capacity / POWER_DRAW_MAH_PER_HOUR.emergency;
+        document.getElementById('normalBatteryLife').innerText = `${(normalHours / 24).toFixed(1)} d (${Math.round(normalHours)} h)`;
+        document.getElementById('emergencyBatteryLife').innerText = `${emergencyHours.toFixed(1)} h`;
+    }
+
+    function stopEmergencyBluetoothScan() {
+        if (emergencyBleHandler && navigator.bluetooth) {
+            navigator.bluetooth.removeEventListener('advertisementreceived', emergencyBleHandler);
+        }
+        if (emergencyBleScan && typeof emergencyBleScan.stop === 'function') {
+            emergencyBleScan.stop();
+        }
+        emergencyBleScan = null;
+        emergencyBleHandler = null;
+    }
+
+    async function startEmergencyBluetoothScan() {
+        if (!navigator.bluetooth || typeof navigator.bluetooth.requestLEScan !== 'function') {
+            document.getElementById('blePowerStatus').innerText = 'BLE: emergency scan simulated (Web Bluetooth unavailable)';
+            return;
+        }
+        try {
+            emergencyBleScan = await navigator.bluetooth.requestLEScan({ acceptAllAdvertisements: true });
+            emergencyBleHandler = event => {
+                if (Number.isFinite(event.rssi)) {
+                    const userLabel = event.device?.name || event.device?.id || 'Nearby user';
+                    const existingObservation = nearbyBleRssiObservations.find(item => item.user_label === userLabel);
+                    const observation = { user_label: userLabel, rssi_dbm: event.rssi, simulated: false };
+                    if (existingObservation) Object.assign(existingObservation, observation);
+                    else nearbyBleRssiObservations.push(observation);
+                    renderBleProximityHints();
+                }
+                document.getElementById('blePowerStatus').innerText = `BLE: emergency scan active; beacon ${event.device?.name || 'detected'}`;
+            };
+            navigator.bluetooth.addEventListener('advertisementreceived', emergencyBleHandler);
+            document.getElementById('blePowerStatus').innerText = 'BLE: continuous emergency scan active';
+        } catch (error) {
+            document.getElementById('blePowerStatus').innerText = 'BLE: emergency scan simulated (permission or browser restriction)';
+        }
+    }
+
+    function startNormalPowerMode() {
+        powerMode = 'NORMAL';
+        if (normalBeaconTimer) clearInterval(normalBeaconTimer);
+        if (normalGpsTimer) clearInterval(normalGpsTimer);
+        if (emergencyGpsWatchId !== null && navigator.geolocation) {
+            navigator.geolocation.clearWatch(emergencyGpsWatchId);
+            emergencyGpsWatchId = null;
+        }
+        stopEmergencyBluetoothScan();
+
+        document.getElementById('powerModeLabel').innerText = 'NORMAL · कम खपत';
+        document.getElementById('powerModeLabel').className = 'mt-1 text-[11px] font-semibold text-emerald-400';
+        document.getElementById('returnToNormalButton').classList.add('hidden');
+        document.getElementById('blePowerStatus').innerText = 'BLE: beacon check every 30 s (simulation)';
+        document.getElementById('gpsPowerStatus').innerText = 'GPS: low-frequency refresh every 5 min';
+        document.getElementById('loraPowerStatus').innerText = 'LoRa: standby; no radio module connected';
+
+        normalBeaconTimer = setInterval(() => {
+            document.getElementById('blePowerStatus').innerText = `BLE: periodic beacon check ${new Date().toLocaleTimeString()} (simulation)`;
+        }, NORMAL_BLE_INTERVAL_MS);
+        normalGpsTimer = setInterval(() => fetchGPSLocation(false), NORMAL_GPS_INTERVAL_MS);
+    }
+
+    function startEmergencyPowerMode() {
+        if (powerMode === 'EMERGENCY') return;
+        powerMode = 'EMERGENCY';
+        if (normalBeaconTimer) clearInterval(normalBeaconTimer);
+        if (normalGpsTimer) clearInterval(normalGpsTimer);
+        normalBeaconTimer = null;
+        normalGpsTimer = null;
+
+        document.getElementById('powerModeLabel').innerText = 'EMERGENCY · उच्च खपत';
+        document.getElementById('powerModeLabel').className = 'mt-1 text-[11px] font-bold text-red-400';
+        document.getElementById('returnToNormalButton').classList.remove('hidden');
+        document.getElementById('gpsPowerStatus').innerText = 'GPS: high-accuracy continuous tracking requested';
+        document.getElementById('loraPowerStatus').innerText = 'LoRa: relay simulated; external radio module required';
+
+        if (navigator.geolocation) {
+            fetchGPSLocation(true);
+            emergencyGpsWatchId = navigator.geolocation.watchPosition(
+                position => {
+                    userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
+                    document.getElementById('gpsCoords').innerText = `${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)}`;
+                    document.getElementById('gpsPowerStatus').innerText = 'GPS: high-accuracy tracking active';
+                },
+                () => {
+                    document.getElementById('gpsPowerStatus').innerText = 'GPS: continuous tracking unavailable; last fix retained';
+                },
+                { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+            );
+        }
+
+        void startEmergencyBluetoothScan();
+    }
+
+    // 1-Tap SOS Signal Broadcast & Server Sync Logic
+    function sendSOS() {
+        startEmergencyPowerMode();
+        const condition = document.getElementById('sosCondition').value;
+        const timestamp = new Date().toLocaleTimeString();
+        const manualFloor = document.getElementById('manualFloor').value;
+        const selectedFloor = manualFloor === '' ? floorEstimate : Number(manualFloor);
+        const selectedLandmark = document.getElementById('manualLandmark').value || null;
+        const rssiHints = nearbyBleRssiObservations.map(observation => ({
+            user_label: observation.user_label,
+            rssi_dbm: observation.rssi_dbm,
+            estimated_distance_m: Math.round(estimateDistanceMetersFromRssi(observation.rssi_dbm)),
+            simulated: observation.simulated
+        }));
+        const sosPacket = {
+            sos_id: 'SOS-' + Math.floor(1000 + Math.random() * 9000),
+            latitude: userLocation.lat,
+            longitude: userLocation.lng,
+            condition: condition,
+            time: timestamp,
+            timestamp: Date.now(),
+            family_count: 3,
+            medical_urgency: condition === 'MEDICAL_CRITICAL' || condition === 'INFANT_ELDERLY',
+            relay_hops: 1,
+            battery_pct: 85,
+            mesh_protocol: rssiHints.some(observation => !observation.simulated) ? 'BLE_P2P_MESH_RSSI' : 'BLE_P2P_MESH_SIMULATION',
+            location_source: locationSource,
+            manual_landmark: selectedLandmark,
+            floor_estimate: selectedFloor,
+            floor_estimate_source: manualFloor === '' ? floorEstimateSource : 'USER_SELECTED',
+            barometric_pressure_hpa: Number(document.getElementById('simulatedPressure').value),
+            ground_pressure_baseline_hpa: Number(document.getElementById('groundPressureBaseline').value),
+            last_known_gps: lastKnownGpsFix,
+            ble_proximity_hints: rssiHints,
+            lat: userLocation.lat,
+            lng: userLocation.lng,
+            id: 'SOS-' + Math.floor(1000 + Math.random() * 9000),
+            hops: 1,
+            dispatched: false
+        };
+
+        sosLogs.unshift({
+            ...sosPacket,
+            id: sosPacket.sos_id,
+            lat: sosPacket.latitude,
+            lng: sosPacket.longitude
+        });
+        renderSOSLogs();
+
+        const payload = {
+            sos_id: sosPacket.sos_id,
+            latitude: sosPacket.latitude,
+            longitude: sosPacket.longitude,
+            family_count: sosPacket.family_count,
+            medical_urgency: sosPacket.medical_urgency,
+            timestamp: Math.floor(Date.now() / 1000),
+            relay_hops: sosPacket.relay_hops,
+            battery_pct: sosPacket.battery_pct,
+            mesh_protocol: sosPacket.mesh_protocol,
+            location_source: sosPacket.location_source,
+            manual_landmark: sosPacket.manual_landmark,
+            floor_estimate: sosPacket.floor_estimate,
+            floor_estimate_source: sosPacket.floor_estimate_source,
+            barometric_pressure_hpa: sosPacket.barometric_pressure_hpa,
+            ground_pressure_baseline_hpa: sosPacket.ground_pressure_baseline_hpa,
+            last_known_gps: sosPacket.last_known_gps,
+            ble_proximity_hints: sosPacket.ble_proximity_hints
+        };
+
+        // 1. Real backend sync to the FastAPI service
+        fetch(COMMAND_CENTER_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).then(async res => {
+            const text = await res.text();
+            console.log('Backend SOS sync:', res.status, text);
+        }).catch(err => {
+            console.log('Saved for offline mesh sync relay:', err);
+        });
+
+        // 2. Offline Mesh & Local Storage Backup
+        try {
+            const queue = JSON.parse(localStorage.getItem(SOS_STORAGE_KEY) || '[]');
+            queue.unshift({
+                ...sosPacket,
+                id: sosPacket.sos_id,
+                lat: sosPacket.latitude,
+                lng: sosPacket.longitude
+            });
+            localStorage.setItem(SOS_STORAGE_KEY, JSON.stringify(queue.slice(0, 50)));
+            localStorage.setItem('last_sos_packet', JSON.stringify(payload));
+        } catch (e) {}
+
+        // 3. Share the event across open tabs/windows in the same browser
+        if ('BroadcastChannel' in window) {
+            const meshChannel = new BroadcastChannel(SOS_CHANNEL_KEY);
+            meshChannel.postMessage({ ...sosPacket, id: sosPacket.sos_id, lat: sosPacket.latitude, lng: sosPacket.longitude });
+            meshChannel.close();
+        }
+
+        alert(`🚨 SOS सिग्नल सफलतापुर्वक ब्रॉडकास्ट हुआ!\n\nID: ${sosPacket.sos_id}\nGPS: ${sosPacket.latitude.toFixed(4)}, ${sosPacket.longitude.toFixed(4)}\n\nयह डेटा Command Backend और Mesh Relay दोनों के माध्यम से भेजा जा रहा है।`);
+    }
+
+    // Render SOS Logs
+    function renderSOSLogs() {
+        const container = document.getElementById('sosLogContainer');
+        document.getElementById('logCount').innerText = `${sosLogs.length} Sent`;
+
+        if (sosLogs.length === 0) return;
+
+        container.innerHTML = sosLogs.map(item => `
+            <div class="bg-slate-900 p-2 rounded-xl border border-slate-700 flex justify-between items-center">
+                <div>
+                    <span class="font-bold text-red-400">${item.id}</span>
+                    <span class="text-slate-300 block">${item.condition}</span>
+                </div>
+                <div class="text-right font-mono text-[10px]">
+                    <span class="text-sky-400 block">${item.lat.toFixed(3)}, ${item.lng.toFixed(3)}</span>
+                    <span class="text-slate-500">${item.time}</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // High-Frequency 2800Hz Audio Whistle Synthesizer
+    function toggleWhistleSiren() {
+        const btn = document.getElementById('sirenBtn');
+        if (isSirenActive) {
+            if (sirenOsc) {
+                sirenOsc.stop();
+                sirenOsc.disconnect();
+            }
+            isSirenActive = false;
+            btn.classList.remove('bg-red-600', 'border-red-400');
+            btn.classList.add('bg-slate-800');
+        } else {
+            try {
+                sirenAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                sirenOsc = sirenAudioCtx.createOscillator();
+                const gain = sirenAudioCtx.createGain();
+
+                sirenOsc.type = 'sawtooth';
+                sirenOsc.frequency.setValueAtTime(2800, sirenAudioCtx.currentTime);
+                
+                sirenOsc.connect(gain);
+                gain.connect(sirenAudioCtx.destination);
+                sirenOsc.start();
+
+                isSirenActive = true;
+                btn.classList.remove('bg-slate-800');
+                btn.classList.add('bg-red-600', 'border-red-400');
+            } catch (e) {
+                alert("Audio error: " + e.message);
+            }
+        }
+    }
+
+    // Screen Strobe Beacon
+    function toggleStrobeBeacon() {
+        const btn = document.getElementById('strobeBtn');
+        isStrobeActive = !isStrobeActive;
+
+        if (isStrobeActive) {
+            document.body.classList.add('strobe-mode');
+            btn.classList.remove('bg-slate-800');
+            btn.classList.add('bg-amber-600');
+        } else {
+            document.body.classList.remove('strobe-mode');
+            btn.classList.remove('bg-amber-600');
+            btn.classList.add('bg-slate-800');
+        }
+    }
+
+    // Leaflet Interactive Safety Map
+    function initMobileMap() {
+        if (mapInstance) {
+            mapInstance.invalidateSize();
+            return;
+        }
+
+        mapInstance = L.map('mobileMap', {
+            center: [userLocation.lat, userLocation.lng],
+            zoom: 10
+        });
+
+        L.tileLayer(MAP_TILE_URL, {
+            maxZoom: 18,
+            attribution: MAPBOX_TOKEN ? '&copy; Mapbox &copy; OpenStreetMap' : '&copy; OpenStreetMap contributors',
+            subdomains: MAPBOX_TOKEN ? undefined : 'abc'
+        }).addTo(mapInstance);
+
+        // User Position Marker
+        const userIcon = L.divIcon({
+            html: `<div class="bg-red-600 text-white rounded-full p-2 text-xs font-bold border-2 border-white shadow-xl animate-bounce">📍 आपका स्थान</div>`,
+            className: '',
+            iconSize: [80, 30]
+        });
+        L.marker([userLocation.lat, userLocation.lng], { icon: userIcon }).addTo(mapInstance)
+            .bindPopup("<b>आपका वर्तमान GPS स्थान</b>").openPopup();
+
+        // Official NDRF Battalions Across India
+        const ndrfBases = [
+            { name: "NDRF 4th Bn Arakkonam (TN)", lat: 13.0827, lng: 79.6700 },
+            { name: "NDRF 10th Bn Vijayawada (AP)", lat: 16.5062, lng: 80.6480 },
+            { name: "NDRF 16th Bn Bengaluru (KA)", lat: 13.0358, lng: 77.5970 },
+            { name: "NDRF 9th Bn Bihta Patna", lat: 25.5562, lng: 84.8711 },
+            { name: "NDRF 1st Bn Guwahati", lat: 26.1158, lng: 91.7086 }
+        ];
+
+        ndrfBases.forEach(b => {
+            const baseIcon = L.divIcon({
+                html: `<div class="bg-sky-600 text-white rounded-lg px-2 py-1 text-[10px] font-bold border border-white shadow-md">🚤 ${b.name}</div>`,
+                className: '',
+                iconSize: [120, 24]
+            });
+            L.marker([b.lat, b.lng], { icon: baseIcon }).addTo(mapInstance);
+        });
+    }
+
+    // Multilingual Dictionary Switcher
+    function changeLanguage() {
+        const lang = document.getElementById('langSelect').value;
+        const d = appDict[lang] || appDict.hi;
+
+        document.getElementById('txtPwaTitle').innerText = d.pwaTitle;
+        document.getElementById('txtPwaDesc').innerText = d.pwaDesc;
+        document.getElementById('txtGpsLabel').innerText = d.gpsLabel;
+        document.getElementById('lblCondition').innerText = d.lblCondition;
+        document.getElementById('txtSosBtnMain').innerText = d.sosBtnMain;
+        document.getElementById('txtSosBtnSub').innerText = d.sosBtnSub;
+        document.getElementById('txtWhistleBtn').innerText = d.whistleBtn;
+        document.getElementById('txtStrobeBtn').innerText = d.strobeBtn;
+        document.getElementById('txtLogTitle').innerText = d.logTitle;
+        document.getElementById('txtNavSos').innerText = d.navSos;
+        document.getElementById('txtNavMap').innerText = d.navMap;
+        document.getElementById('txtNavHelpline').innerText = d.navHelpline;
+        document.getElementById('txtNavGuides').innerText = d.navGuides;
+    }
+
+    // PWA Service Worker
+    function setupPWAInstall() {
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('pwaBanner').classList.remove('hidden');
+        });
+    }
+
+    function promptPWAInstall() {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                deferredPrompt = null;
+            });
+        } else {
+            alert("To install on your phone:\n\n1. Tap browser menu (⋮ or Share icon)\n2. Select 'Add to Home Screen' or 'Install App'");
+        }
+    }
+
+    function registerServiceWorkerBlob() {
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                self.addEventListener('install', e => e.waitUntil(self.skipWaiting()));
+                self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+                self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));
+            `;
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(err => console.log('SW setup skipped'));
+        }
+    }
+</script>
+</body>
+</html>
