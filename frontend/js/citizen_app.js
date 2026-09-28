@@ -98,7 +98,12 @@ function sendSOS() {
         condition: conditionEl ? conditionEl.value : 'FLOOD_TRAPPED',
         landmark: landmarkEl ? landmarkEl.value : 'Unspecified',
         floor: floorEl ? parseInt(floorEl.value) || 0 : 0,
-        citizenName: currentUser ? currentUser.name : 'Citizen',
+        userId: currentUser ? currentUser.id : null,
+        citizenName: currentUser ? currentUser.name : 'Anonymous Citizen',
+        citizenPhone: currentUser ? currentUser.phone : 'N/A',
+        emergencyContact: currentUser ? currentUser.emergencyContact : 'N/A',
+        bloodGroup: currentUser ? currentUser.bloodGroup : 'N/A',
+        medicalNotes: currentUser ? currentUser.medicalNotes : 'N/A',
         timestamp: Date.now(),
         hops: 1,
         source: 'CITIZEN_PWA_APP'
@@ -115,7 +120,7 @@ function sendSOS() {
         body: JSON.stringify(sosPacket)
     }).then(res => res.json())
       .then(data => {
-          logSOSMessage(`✅ [HQ SERVER SYNC] SOS Logged (ID: ${sosPacket.id})`);
+          logSOSMessage(`✅ [HQ SERVER SYNC] SOS Logged for ${sosPacket.citizenName} (${sosPacket.citizenPhone})`);
           startRescueTracking();
       })
       .catch(err => {
@@ -124,7 +129,7 @@ function sendSOS() {
 
     meshNet.broadcastSOS(sosPacket);
     startRescueTracking();
-    alert(`🚨 EMERGENCY SOS BROADCASTED!\nSender: ${sosPacket.citizenName}\nNDRF Control Room and nearby rescue teams notified via Web & Mesh Network.`);
+    alert(`🚨 EMERGENCY SOS BROADCASTED!\nSender: ${sosPacket.citizenName} (${sosPacket.citizenPhone})\nNDRF Control Room notified.`);
 }
 
 function checkMyActiveSOSStatus() {
@@ -187,7 +192,6 @@ function renderTrackerCard(sos) {
         if (distanceKm) distanceKm.innerText = `${sos.distanceToVictimKm || 0} km`;
         if (etaMin) etaMin.innerText = `${sos.etaMinutes || 0} Mins`;
 
-        // Render live boat location on Citizen Mini Map
         if (citizenMapInstance && sos.boatLat && sos.boatLng) {
             if (!citizenBoatMarker) {
                 citizenBoatMarker = L.marker([sos.boatLat, sos.boatLng], {
@@ -215,7 +219,6 @@ function logSOSMessage(msg) {
     logContainer.prepend(entry);
 }
 
-/* Physical Alert Tools */
 function toggleWhistleSiren() {
     const btn = document.getElementById('sirenBtn');
     if (!isSirenActive) {

@@ -1,5 +1,5 @@
 /**
- * Persistent Data Storage Service with Nationwide NDRF Battalions Database & Live Rescue Tracking
+ * Persistent Data Storage Service with Full Database Persistence (Users, Sessions, SOS Incidents, Teams)
  */
 const fs = require('fs');
 const path = require('path');
@@ -13,7 +13,6 @@ class StorageService {
         this.users = [];
         this.sessions = {};
 
-        // Nationwide NDRF Battalions & Rescue Teams Database (All 16 Battalions with Real Lat/Lng)
         this.teams = [
             { id: 'BN-09-PATNA', name: 'NDRF 9th Bn - Patna/Bihta', battalion: '9th Bn', state: 'Bihar', lat: 25.5941, lng: 85.1376, status: 'READY', boats: 8, medics: 12, phone: '06115-252101' },
             { id: 'BN-01-GUWAHATI', name: 'NDRF 1st Bn - Guwahati', battalion: '1st Bn', state: 'Assam & North-East', lat: 26.1445, lng: 91.7362, status: 'READY', boats: 10, medics: 15, phone: '0361-2840138' },
@@ -89,7 +88,15 @@ class StorageService {
             if (fs.existsSync(DATA_FILE)) {
                 const raw = fs.readFileSync(DATA_FILE, 'utf8');
                 const parsed = JSON.parse(raw);
-                if (parsed.users && parsed.users.length) this.users = parsed.users;
+                if (parsed.users && parsed.users.length) {
+                    // Merge persistent users with seeded defaults to ensure no loss
+                    parsed.users.forEach(u => {
+                        if (!this.users.some(existing => existing.id === u.id || existing.phone === u.phone)) {
+                            this.users.push(u);
+                        }
+                    });
+                }
+                if (parsed.sessions) this.sessions = parsed.sessions;
                 if (parsed.sosList && parsed.sosList.length) this.sosList = parsed.sosList;
                 if (parsed.teams && parsed.teams.length) this.teams = parsed.teams;
             }
@@ -102,6 +109,7 @@ class StorageService {
         try {
             const data = {
                 users: this.users,
+                sessions: this.sessions,
                 sosList: this.sosList,
                 teams: this.teams,
                 lastSaved: new Date().toISOString()
@@ -154,10 +162,12 @@ class StorageService {
             createdAt: Date.now()
         };
 
+        this.saveToFile();
         return { token, user: this.sanitizeUser(user) };
     }
 
     getUserByToken(token) {
+        if (!token) return null;
         const session = this.sessions[token];
         if (!session) return null;
         const user = this.users.find(u => u.id === session.userId);
@@ -172,15 +182,15 @@ class StorageService {
     // ================= SOS & DISPATCH METHODS =================
     getAllSOS(userRole = 'GUEST') {
         return this.sosList.map(item => {
-            // Auto calculate nearest team for each incident
             const nearestTeam = GeoService.findNearestTeam(item.lat, item.lng, this.teams);
             const enriched = { ...item, nearestTeam };
 
+            // If user is ADMIN or COMMANDER, show full private PII details for rescue operations
             if (userRole === 'ADMIN' || userRole === 'COMMANDER') {
-                return enriched; // Full PII for NDRF Commander Admin
+                return enriched;
             }
 
-            // Redact private details for public view
+            // Public view: Redact phone & emergency notes for non-admin viewers
             const { citizenPhone, emergencyContact, medicalNotes, ...publicView } = enriched;
             return publicView;
         });
@@ -189,18 +199,24 @@ class StorageService {
     addSOS(sosPacket, user = null) {
         const lat = parseFloat(sosPacket.lat);
         const lng = parseFloat(sosPacket.lng);
-
-        // Find nearest NDRF team across India (Bihar, Assam, Nepal, etc.)
         const nearestTeam = GeoService.findNearestTeam(lat, lng, this.teams);
+
+        // Priority resolution: Authenticated User > Body Params > Fallback
+        const citizenName = user ? user.name : (sosPacket.citizenName && sosPacket.citizenName !== 'Citizen' ? sosPacket.citizenName : 'Anonymous Citizen');
+        const citizenPhone = user ? user.phone : (sosPacket.citizenPhone && sosPacket.citizenPhone !== 'N/A' ? sosPacket.citizenPhone : 'N/A');
+        const emergencyContact = user ? user.emergencyContact : (sosPacket.emergencyContact || 'N/A');
+        const bloodGroup = user ? user.bloodGroup : (sosPacket.bloodGroup || 'N/A');
+        const medicalNotes = user ? user.medicalNotes : (sosPacket.medicalNotes || 'N/A');
+        const userId = user ? user.id : (sosPacket.userId || 'GUEST_CITIZEN');
 
         const newSos = {
             id: sosPacket.id || `sos-${Date.now()}-${Math.floor(Math.random()*1000)}`,
-            userId: user ? user.id : (sosPacket.userId || 'GUEST_CITIZEN'),
-            citizenName: user ? user.name : (sosPacket.citizenName || 'Anonymous Citizen'),
-            citizenPhone: user ? user.phone : (sosPacket.citizenPhone || 'N/A'),
-            emergencyContact: user ? user.emergencyContact : (sosPacket.emergencyContact || 'N/A'),
-            bloodGroup: user ? user.bloodGroup : (sosPacket.bloodGroup || 'N/A'),
-            medicalNotes: user ? user.medicalNotes : (sosPacket.medicalNotes || 'N/A'),
+            userId,
+            citizenName,
+            citizenPhone,
+            emergencyContact,
+            bloodGroup,
+            medicalNotes,
             lat,
             lng,
             condition: sosPacket.condition || 'FLOOD_TRAPPED',
@@ -229,7 +245,6 @@ class StorageService {
             item.assignedTeamName = team.name;
             item.dispatchedAt = Date.now();
             
-            // Initialize live tracking coordinates starting from battalion base towards victim
             item.boatLat = team.lat;
             item.boatLng = team.lng;
             item.distanceToVictimKm = GeoService.calculateDistanceKm(item.lat, item.lng, item.boatLat, item.boatLng);
@@ -266,9 +281,6 @@ class StorageService {
         };
     }
 
-    /**
-     * Real-time live boat movement simulator: Moves dispatched boats towards victims every 3 seconds
-     */
     startLiveBoatMovementSimulator() {
         setInterval(() => {
             let updated = false;
@@ -279,7 +291,6 @@ class StorageService {
                     const dist = Math.sqrt(dLat * dLat + dLng * dLng);
 
                     if (dist > 0.001) {
-                        // Move boat 8% closer towards victim's GPS position
                         sos.boatLat += dLat * 0.08;
                         sos.boatLng += dLng * 0.08;
                         sos.distanceToVictimKm = GeoService.calculateDistanceKm(sos.lat, sos.lng, sos.boatLat, sos.boatLng);

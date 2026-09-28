@@ -6,9 +6,9 @@
       "phone": "9999999999",
       "email": "admin@ndrf.gov.in",
       "role": "ADMIN",
-      "salt": "12b92f0b5cb5aef2fc709fcbf0a85b82",
-      "hash": "9354dfd5dfe57868711de3e3a04215752d189fba64c84fb76d90fdd561b1b1208ee456b43247e4b6b35700d23fbf62e099fdb45923aab50a93dc85fa94cd0a97",
-      "createdAt": "2026-09-28T15:41:49.510Z"
+      "salt": "39a97bf0195428086de8013f7fad0e9d",
+      "hash": "32049e5ce61da7d3e4cd409ebe7fcb8c06fc8626d26bb66dc1c2041d0d136028cc0ad20b16bd8b17a86377702bfb85233223d64a16988a0c4f89161d9fef7c3f",
+      "createdAt": "2026-09-28T19:02:23.351Z"
     },
     {
       "id": "usr-citizen-demo",
@@ -19,12 +19,92 @@
       "bloodGroup": "O+",
       "emergencyContact": "9123456789",
       "medicalNotes": "Diabetic patient",
-      "salt": "539625409f5c8ba3c2312894c53f5ed9",
-      "hash": "239e79f83870d3314c92842610a71d55730836beaa0afe2c202d4f9a04d59f42c1be939a299aae9875f17af89bdd48d4262b927b3eec9ff4c051c8892e6ed744",
-      "createdAt": "2026-09-28T15:41:49.512Z"
+      "salt": "1faa8576b081760f94954987c9ccea7c",
+      "hash": "aa352878349f79a98338dea0075fa7d84426bd62dca9cbb87da34fd6d900679efabbfdedf90938fcf2d09f6d9f618b367b218b8caa3d22ece86097a2ec6818d9",
+      "createdAt": "2026-09-28T19:02:23.352Z"
+    },
+    {
+      "id": "usr-1790621622175-613",
+      "name": "akshit",
+      "phone": "9988776655",
+      "email": "",
+      "role": "CITIZEN",
+      "bloodGroup": "O+",
+      "emergencyContact": "1122334455",
+      "medicalNotes": "",
+      "salt": "6d9752481157b6d62cca7a1ef881ff38",
+      "hash": "feae03161bfb047716d56c526e7b8500e333cab23de8b4fafaed15cd0808b93ac9f73a7e41aba60df96ef5ff528be09cbd7e351ddae5393e2eb4b08e9388a4ea",
+      "createdAt": "2026-09-28T18:53:42.175Z"
+    },
+    {
+      "id": "usr-1790622175899-350",
+      "name": "Suresh Kumar",
+      "phone": "9123491234",
+      "email": "",
+      "role": "CITIZEN",
+      "bloodGroup": "B+",
+      "emergencyContact": "9876598765",
+      "medicalNotes": "Asthma and diabetic patient",
+      "salt": "1a3bba3c572e92a1b608713acb569012",
+      "hash": "5aaf68da6ab5f90064bf7d19dfd3601ce7276353c4921969a3d2b1c694ccd7428139cd8c4ea6d09974b2c87b97ed57193d17b37e8b900153a9f53ba298a96800",
+      "createdAt": "2026-09-28T19:02:55.899Z"
     }
   ],
+  "sessions": {
+    "66816eeb5a49005997796e541b46742b38c03a4356c55572e789d76b2b5118c5": {
+      "userId": "usr-1790622175899-350",
+      "role": "CITIZEN",
+      "createdAt": 1790622175901
+    },
+    "a061c9786f3c95db5110eb66e3746d96faf6c06286789f107f5716b72ce6687d": {
+      "userId": "usr-admin-demo",
+      "role": "ADMIN",
+      "createdAt": 1790622176066
+    }
+  },
   "sosList": [
+    {
+      "id": "sos-1790622176062-821",
+      "userId": "usr-1790622175899-350",
+      "citizenName": "Suresh Kumar",
+      "citizenPhone": "9123491234",
+      "emergencyContact": "9876598765",
+      "bloodGroup": "B+",
+      "medicalNotes": "Asthma and diabetic patient",
+      "lat": 25.61,
+      "lng": 85.15,
+      "condition": "FLOOD_TRAPPED",
+      "district": "Pan-India SOS Zone",
+      "status": "PENDING",
+      "landmark": "Unspecified",
+      "floor": 0,
+      "timestamp": 1790622176062,
+      "hops": 1,
+      "source": "WEB_API",
+      "nearestTeam": null
+    },
+    {
+      "id": "sos-1790621822216-225",
+      "userId": "usr-admin-demo",
+      "citizenName": "Commander Rajesh Kumar (NDRF 9th Bn)",
+      "citizenPhone": "9999999999",
+      "lat": 25.494603,
+      "lng": 81.853293,
+      "condition": "FLOOD_TRAPPED",
+      "district": "Pan-India SOS Zone",
+      "status": "DISPATCHED",
+      "landmark": "Unspecified",
+      "floor": 0,
+      "timestamp": 1790621822216,
+      "hops": 1,
+      "source": "CITIZEN_PWA_APP",
+      "nearestTeam": null,
+      "dispatchedBoat": "NDRF-RESCUE-BOAT-20",
+      "assignedTeamName": "Patna 9th Bn Team Alpha",
+      "dispatchedAt": 1790621875026,
+      "distanceToVictimKm": null,
+      "etaMinutes": null
+    },
     {
       "id": "sos-1790617965923-330",
       "userId": "usr-citizen-demo",
@@ -122,5 +202,5 @@
       "medics": 5
     }
   ],
-  "lastSaved": "2026-09-28T18:01:22.052Z"
+  "lastSaved": "2026-09-28T19:02:56.066Z"
 }
