@@ -1,12 +1,12 @@
 /**
- * NDRF SOS Controller - Handles API Logic with Auth & PII Privacy
+ * NDRF SOS Controller - Handles API Logic with Real-time Nearest Team & Citizen Live Tracking
  */
 const storageService = require('../services/storageService');
 const MeshService = require('../services/meshService');
 
 class SosController {
     /**
-     * Get all active SOS requests (Filters sensitive PII for non-admins)
+     * Get all active SOS requests (Enriched with Nearest NDRF Team calculations)
      */
     getSOSList(req, res) {
         try {
@@ -27,7 +27,27 @@ class SosController {
     }
 
     /**
-     * Submit a new SOS request (Attaches authenticated citizen details)
+     * Get Citizen's active SOS status & live rescue boat movement tracking
+     */
+    getUserActiveSOS(req, res) {
+        try {
+            const authHeader = req.headers['authorization'];
+            const token = authHeader ? authHeader.replace('Bearer ', '') : null;
+            let user = null;
+
+            if (token) {
+                user = storageService.getUserByToken(token);
+            }
+
+            const sos = storageService.getSOSForUser(user ? user.id : 'GUEST_CITIZEN');
+            res.json({ success: true, data: sos || null });
+        } catch (err) {
+            res.status(500).json({ success: false, error: err.message });
+        }
+    }
+
+    /**
+     * Submit a new SOS request (Automatically finds nearest NDRF Team via Haversine)
      */
     createSOS(req, res) {
         try {
@@ -37,7 +57,6 @@ class SosController {
                 return res.status(400).json({ success: false, error: "Latitude and Longitude are required" });
             }
 
-            // Extract optional authenticated user
             const authHeader = req.headers['authorization'];
             const token = authHeader ? authHeader.replace('Bearer ', '') : null;
             let user = null;
@@ -56,42 +75,17 @@ class SosController {
     }
 
     /**
-     * Receive raw 16-Byte BLE Mesh Buffer
-     */
-    receiveMeshPacket(req, res) {
-        try {
-            const rawData = req.body.buffer || req.body;
-            let buffer;
-
-            if (typeof rawData === 'string') {
-                buffer = Buffer.from(rawData, 'base64').buffer;
-            } else if (Array.isArray(rawData)) {
-                buffer = new Uint8Array(rawData).buffer;
-            } else {
-                buffer = req.body;
-            }
-
-            const decoded = MeshService.decodePacket(buffer);
-            const sos = storageService.addSOS(decoded);
-
-            res.status(200).json({ success: true, decoded, data: sos });
-        } catch (err) {
-            res.status(400).json({ success: false, error: "Mesh Packet Decode Error: " + err.message });
-        }
-    }
-
-    /**
-     * Dispatch rescue boat to an emergency site
+     * Dispatch nearest rescue boat to an emergency site
      */
     dispatchRescueBoat(req, res) {
         try {
-            const { sosId, boatName } = req.body;
+            const { sosId, boatName, assignedTeamId } = req.body;
 
             if (!sosId) {
                 return res.status(400).json({ success: false, error: "sosId is required" });
             }
 
-            const updated = storageService.dispatchBoat(sosId, boatName);
+            const updated = storageService.dispatchBoat(sosId, boatName, assignedTeamId);
             if (!updated) {
                 return res.status(404).json({ success: false, error: "SOS ID not found" });
             }
@@ -103,7 +97,7 @@ class SosController {
     }
 
     /**
-     * Get list of NDRF rescue teams and equipment availability
+     * Get list of nationwide NDRF Battalions & Teams
      */
     getTeams(req, res) {
         try {
